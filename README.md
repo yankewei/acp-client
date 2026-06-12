@@ -33,13 +33,31 @@ $transport = new StdioTransport([
 $client = new Client($transport);
 
 $client->initialize();
-$session = $client->call('session/new', ['cwd' => getcwd(), 'mcpServers' => []]);
-$client->notify('agent/cancel');
+$session = $client->sessionNew(getcwd());
+$turn = $client->sessionPrompt($session['sessionId'], 'Refactor the login flow');
+$client->sessionCancel($session['sessionId']);
 $transport->close();
 ```
 
 `initialize()` sends ACP v1-compatible default client information and
 capabilities. Pass an array to override any initialization params.
+
+Typed convenience methods are available for stable ACP v1 calls:
+
+- `authenticate($methodId)` and `logout()`
+- `sessionNew($cwd, $mcpServers = [], $additionalDirectories = [])`
+- `sessionLoad($sessionId, $cwd, $mcpServers = [], $additionalDirectories = [])`
+- `sessionResume($sessionId, $cwd, $mcpServers = [], $additionalDirectories = [])`
+- `sessionClose($sessionId)`
+- `sessionList($cwd = null, $cursor = null)`
+- `sessionDelete($sessionId)`
+- `sessionPrompt($sessionId, $prompt)`
+- `sessionCancel($sessionId)`
+- `setConfigOption($sessionId, $configId, $value)`
+- `setMode($sessionId, $modeId)` for agents that still expose legacy modes
+
+The lower-level `Client::call()` and `Client::notify()` methods remain available
+for agent-specific extensions and ACP methods not yet wrapped by this library.
 
 `Client::call()` returns the raw JSON-RPC `result` value, so it may be an array,
 string, number, boolean, or `null` depending on the ACP method. `initialize()`
