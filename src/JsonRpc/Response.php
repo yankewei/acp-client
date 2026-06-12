@@ -13,7 +13,7 @@ final class Response
     private mixed $result = null;
 
     public function __construct(
-        private readonly int|string $id,
+        private readonly int|string|null $id,
     ) {
     }
 
@@ -32,25 +32,47 @@ final class Response
             throw new AcpException('Invalid JSON-RPC response: expected object');
         }
 
+        if (array_is_list($data)) {
+            throw new AcpException('Invalid JSON-RPC response: expected object');
+        }
+
+        if (($data['jsonrpc'] ?? null) !== '2.0') {
+            throw new AcpException('Invalid JSON-RPC response: missing or invalid jsonrpc version');
+        }
+
         if (!array_key_exists('id', $data)) {
             throw new AcpException('Invalid JSON-RPC response: missing id');
         }
 
+        if (!is_int($data['id']) && !is_string($data['id']) && $data['id'] !== null) {
+            throw new AcpException('Invalid JSON-RPC response: id must be a string, integer, or null');
+        }
+
+        $hasResult = array_key_exists('result', $data);
+        $hasError = array_key_exists('error', $data);
+
+        if ($hasResult === $hasError) {
+            throw new AcpException('Invalid JSON-RPC response: must contain exactly one of result or error');
+        }
+
         $response = new self($data['id']);
 
-        if (array_key_exists('error', $data) && $data['error'] !== null) {
+        if ($hasError) {
             if (!is_array($data['error'])) {
                 throw new AcpException('Invalid JSON-RPC response: error must be an object');
             }
+            if (array_is_list($data['error'])) {
+                throw new AcpException('Invalid JSON-RPC response: error must be an object');
+            }
             $response->error = Error::fromArray($data['error']);
-        } elseif (array_key_exists('result', $data)) {
+        } else {
             $response->result = $data['result'];
         }
 
         return $response;
     }
 
-    public function getId(): int|string
+    public function getId(): int|string|null
     {
         return $this->id;
     }

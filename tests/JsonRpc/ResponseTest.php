@@ -40,4 +40,40 @@ final class ResponseTest extends TestCase
         $this->expectException(AcpException::class);
         Response::fromJson('{"jsonrpc":"2.0","result":{}}');
     }
+
+    public function testParseMissingJsonRpcVersionThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"id":1,"result":{}}');
+    }
+
+    public function testParseInvalidIdThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"jsonrpc":"2.0","id":{},"result":{}}');
+    }
+
+    public function testParseResultAndErrorThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"jsonrpc":"2.0","id":1,"result":{},"error":{"code":-32600,"message":"Invalid Request"}}');
+    }
+
+    public function testParseMissingResultAndErrorThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"jsonrpc":"2.0","id":1}');
+    }
+
+    public function testParseInvalidErrorCodeThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"jsonrpc":"2.0","id":1,"error":{"code":"-32600","message":"Invalid Request"}}');
+    }
+
+    public function testParseInvalidErrorMessageThrows(): void
+    {
+        $this->expectException(AcpException::class);
+        Response::fromJson('{"jsonrpc":"2.0","id":1,"error":{"code":-32600,"message":false}}');
+    }
 }

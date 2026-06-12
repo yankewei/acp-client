@@ -20,6 +20,8 @@ final class StdioTransport implements TransportInterface
     /** @var resource|null */
     private $stderr = null;
 
+    private string $stderrBuffer = '';
+
     public function __construct(
         private readonly array $config,
     ) {
@@ -31,6 +33,10 @@ final class StdioTransport implements TransportInterface
             return;
         }
 
+        if ($this->process !== null) {
+            $this->close();
+        }
+
         $command = $this->config['command'] ?? '';
         $args = $this->config['args'] ?? [];
         $cwd = $this->config['cwd'] ?? null;
@@ -40,10 +46,7 @@ final class StdioTransport implements TransportInterface
             throw new TransportException('No command configured for stdio transport');
         }
 
-        $cmd = escapeshellcmd($command);
-        foreach ($args as $arg) {
-            $cmd .= ' ' . escapeshellarg((string) $arg);
-        }
+        $cmd = array_merge([(string) $command], array_map('strval', $args));
 
         $descriptors = [
             0 => ['pipe', 'r'],
@@ -61,16 +64,20 @@ final class StdioTransport implements TransportInterface
         $this->stdin = $pipes[0];
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
+
+        stream_set_blocking($this->stderr, false);
     }
 
     public function send(string $message): void
     {
         $this->ensureOpen();
+        $this->collectStderr();
 
-        $written = fwrite($this->stdin, $message . "\n");
+        $payload = $message . "\n";
+        $written = fwrite($this->stdin, $payload);
 
-        if ($written === false) {
-            throw new TransportException('Failed to write to process stdin');
+        if ($written === false || $written !== strlen($payload)) {
+            throw new TransportException($this->withStderr('Failed to write to process stdin'));
         }
 
         fflush($this->stdin);
@@ -78,10 +85,14 @@ final class StdioTransport implements TransportInterface
 
     public function receive(float $timeout = 0.0): ?string
     {
-        $this->ensureOpen();
+        if (!is_resource($this->stdout)) {
+            throw new TransportException($this->withStderr('Transport is not open'));
+        }
+
+        $this->collectStderr();
 
         if (feof($this->stdout)) {
-            return null;
+            throw new TransportException($this->withStderr('Process stdout closed'));
         }
 
         if ($timeout > 0.0) {
@@ -89,10 +100,17 @@ final class StdioTransport implements TransportInterface
 
             $end = microtime(true) + $timeout;
             do {
+                $this->collectStderr();
+
                 $line = fgets($this->stdout);
                 if ($line !== false) {
                     stream_set_blocking($this->stdout, true);
                     return rtrim($line, "\n");
+                }
+
+                if (!$this->isOpen()) {
+                    stream_set_blocking($this->stdout, true);
+                    throw new TransportException($this->withStderr('Process exited without response'));
                 }
 
                 $remaining = $end - microtime(true);
@@ -104,13 +122,22 @@ final class StdioTransport implements TransportInterface
                 $read = [$this->stdout];
                 $write = null;
                 $except = null;
-                stream_select($read, $write, $except, (int) $remaining, (int) (($remaining - (int) $remaining) * 1_000_000));
+                $selected = stream_select($read, $write, $except, (int) $remaining, (int) (($remaining - (int) $remaining) * 1_000_000));
+                if ($selected === false) {
+                    stream_set_blocking($this->stdout, true);
+                    throw new TransportException($this->withStderr('Failed to wait for process stdout'));
+                }
             } while (true);
         }
 
+        $this->collectStderr();
         $line = fgets($this->stdout);
 
         if ($line === false) {
+            if (feof($this->stdout)) {
+                throw new TransportException($this->withStderr('Process stdout closed'));
+            }
+
             return null;
         }
 
@@ -142,13 +169,55 @@ final class StdioTransport implements TransportInterface
 
     public function isOpen(): bool
     {
-        return $this->process !== null;
+        if ($this->process === null) {
+            return false;
+        }
+
+        $status = proc_get_status($this->process);
+
+        return $status !== false && $status['running'] === true;
     }
 
     private function ensureOpen(): void
     {
         if (!$this->isOpen()) {
-            throw new TransportException('Transport is not open');
+            throw new TransportException($this->withStderr('Transport is not open'));
+        }
+    }
+
+    private function withStderr(string $message): string
+    {
+        $stderr = $this->readStderr();
+
+        if ($stderr === '') {
+            return $message;
+        }
+
+        return $message . ': ' . $stderr;
+    }
+
+    private function readStderr(): string
+    {
+        $this->collectStderr();
+
+        return trim($this->stderrBuffer);
+    }
+
+    private function collectStderr(): void
+    {
+        if (!is_resource($this->stderr)) {
+            return;
+        }
+
+        $stderr = stream_get_contents($this->stderr);
+        if ($stderr === false || $stderr === '') {
+            return;
+        }
+
+        $this->stderrBuffer .= $stderr;
+
+        if (strlen($this->stderrBuffer) > 4000) {
+            $this->stderrBuffer = substr($this->stderrBuffer, -4000);
         }
     }
 }
