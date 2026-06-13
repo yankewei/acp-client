@@ -56,6 +56,14 @@ final class PlanUpdateTest extends TestCase
         self::assertSame('completed', $entries[2]->getStatus());
     }
 
+    public function testRejectsWrongSessionUpdate(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid plan update: sessionUpdate must be plan');
+
+        PlanUpdate::fromUpdate('sess_1', ['sessionUpdate' => 'tool_call']);
+    }
+
     public function testRejectsMissingEntries(): void
     {
         $this->expectException(AcpException::class);

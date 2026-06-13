@@ -29,10 +29,10 @@ final class PlanUpdate implements SessionUpdate
             throw new AcpException('Invalid plan update: sessionUpdate must be plan');
         }
 
-        $entries = $update['entries'] ?? null;
-        if (!is_array($entries) || !array_is_list($entries)) {
-            throw new AcpException('Invalid plan update: entries must be a list');
-        }
+        $entries = Assert::list(
+            $update['entries'] ?? null,
+            'Invalid plan update: entries must be a list',
+        );
 
         return new self(
             $sessionId,
