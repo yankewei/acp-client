@@ -38,6 +38,43 @@ final class SessionUpdateMapperTest extends TestCase
         self::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
+    public function testReturnsNullWhenUpdateIsMissing(): void
+    {
+        $notification = new Notification('session/update', ['sessionId' => 'sess_1']);
+
+        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+    }
+
+    public function testReturnsNullWhenUpdateIsList(): void
+    {
+        $notification = new Notification('session/update', [
+            'sessionId' => 'sess_1',
+            'update' => ['agent_message_chunk'],
+        ]);
+
+        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+    }
+
+    public function testReturnsNullWhenSessionUpdateIsMissing(): void
+    {
+        $notification = new Notification('session/update', [
+            'sessionId' => 'sess_1',
+            'update' => ['content' => ['type' => 'text', 'text' => 'Hi']],
+        ]);
+
+        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+    }
+
+    public function testReturnsNullWhenSessionUpdateIsNotString(): void
+    {
+        $notification = new Notification('session/update', [
+            'sessionId' => 'sess_1',
+            'update' => ['sessionUpdate' => 123],
+        ]);
+
+        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+    }
+
     public function testDispatchesSessionInfoUpdate(): void
     {
         $notification = new Notification('session/update', [
