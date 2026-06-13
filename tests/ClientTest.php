@@ -595,6 +595,28 @@ final class ClientTest extends TestCase
         self::assertSame(['sessionId' => 'sess_1'], $sent['params']);
     }
 
+    public function testStrictProtocolRequiresInitializeBeforeSessionDelete(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Cannot call session/delete before initialize() in strict protocol mode');
+
+        $client->sessionDelete('sess_1');
+    }
+
+    public function testStrictProtocolRejectsSessionDeleteWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Cannot call session/delete: agent did not advertise sessionCapabilities.delete');
+
+        $client->sessionDelete('sess_1');
+    }
+
     public function testSessionPromptAcceptsText(): void
     {
         $transport = $this->transportWithResult(['stopReason' => 'end_turn']);

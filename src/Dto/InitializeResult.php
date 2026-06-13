@@ -115,6 +115,11 @@ final class InitializeResult
         return $this->hasObjectCapability('sessionCapabilities', 'list');
     }
 
+    public function supportsSessionDelete(): bool
+    {
+        return $this->hasObjectCapability('sessionCapabilities', 'delete');
+    }
+
     public function supportsAdditionalDirectories(): bool
     {
         return $this->hasObjectCapability('sessionCapabilities', 'additionalDirectories');

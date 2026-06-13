@@ -125,6 +125,7 @@ final class InitializeResultTest extends TestCase
                     'list' => [],
                     'resume' => [],
                     'close' => [],
+                    'delete' => [],
                     'additionalDirectories' => [],
                 ],
                 'mcpCapabilities' => [
@@ -138,6 +139,7 @@ final class InitializeResultTest extends TestCase
         self::assertTrue($result->supportsSessionList());
         self::assertTrue($result->supportsSessionResume());
         self::assertTrue($result->supportsSessionClose());
+        self::assertTrue($result->supportsSessionDelete());
         self::assertTrue($result->supportsAdditionalDirectories());
         self::assertTrue($result->supportsMcpHttp());
         self::assertTrue($result->supportsMcpSse());

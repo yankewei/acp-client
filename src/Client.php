@@ -297,6 +297,12 @@ final class Client
      */
     public function sessionDelete(string $sessionId, ?float $timeout = null): array
     {
+        if ($this->strictProtocol) {
+            if (!$this->requireInitialized('session/delete')->supportsSessionDelete()) {
+                throw new AcpException('Cannot call session/delete: agent did not advertise sessionCapabilities.delete');
+            }
+        }
+
         return $this->expectArrayResult(
             $this->call('session/delete', ['sessionId' => $sessionId], $timeout),
             'session/delete',
