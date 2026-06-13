@@ -43,6 +43,25 @@ final class Assert
     }
 
     /**
+     * @return array<int, mixed>
+     *
+     * @throws AcpException
+     */
+    public static function optionalList(mixed $value, string $message): array
+    {
+        if ($value === null) {
+            return [];
+        }
+
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new AcpException($message);
+        }
+
+        /** @var array<int, mixed> $value */
+        return $value;
+    }
+
+    /**
      * @param array<string, mixed> $data
      *
      * @throws AcpException
@@ -72,6 +91,27 @@ final class Assert
         }
 
         return $data[$key];
+    }
+
+    /**
+     * @param string[] $allowed
+     *
+     * @throws AcpException
+     */
+    public static function optionalStringInEnum(
+        ?string $value,
+        array $allowed,
+        string $message,
+    ): ?string {
+        if ($value === null) {
+            return null;
+        }
+
+        if (!in_array($value, $allowed, true)) {
+            throw new AcpException($message);
+        }
+
+        return $value;
     }
 
     /**
