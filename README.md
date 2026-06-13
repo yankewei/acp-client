@@ -86,6 +86,33 @@ If an agent requires authentication before creating a session, it can return a
 JSON-RPC error with code `-32000`. `JsonRpcException::isAuthenticationRequired()`
 is available for that branch.
 
+### Strict protocol mode
+
+By default the client stays permissive and acts as a thin JSON-RPC wrapper. For
+ACP clients that should enforce Session Setup requirements, enable strict mode:
+
+```php
+$client = new Client($transport, strictProtocol: true);
+
+$initialize = $client->initialize();
+
+if ($initialize->supportsSessionResume()) {
+    $client->sessionResume($sessionId, getcwd());
+}
+```
+
+Strict mode enforces the ACP Session Setup rules that the client can validate
+locally:
+
+- `initialize()` must run before session lifecycle calls
+- `session/load`, `session/resume`, `session/close`, and `additionalDirectories`
+  require the matching advertised agent capability
+- `cwd`, `additionalDirectories`, and stdio MCP `command` values must be
+  absolute paths
+- stdio, HTTP, and SSE MCP server configurations must match the protocol shape
+- HTTP and SSE MCP servers require `mcpCapabilities.http` or
+  `mcpCapabilities.sse`
+
 ## Kimi ACP smoke test
 
 If you have Kimi Code installed locally, you can test the stdio transport with:

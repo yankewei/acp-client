@@ -244,6 +244,160 @@ final class ClientTest extends TestCase
         self::assertSame(['sessionId' => 'sess_1'], $sent['params']);
     }
 
+    public function testStrictProtocolRequiresInitializeBeforeSessionSetup(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0, true);
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionNew('/repo');
+    }
+
+    public function testStrictProtocolAllowsAdvertisedSessionSetup(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [
+                    'sessionCapabilities' => [
+                        'additionalDirectories' => [],
+                    ],
+                    'mcpCapabilities' => [
+                        'http' => true,
+                        'sse' => true,
+                    ],
+                ],
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => ['sessionId' => 'sess_1'],
+        ]);
+
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+        $session = $client->sessionNew(
+            '/repo',
+            [
+                [
+                    'name' => 'filesystem',
+                    'command' => '/usr/local/bin/mcp-server',
+                    'args' => ['--stdio'],
+                    'env' => [['name' => 'TOKEN', 'value' => 'secret']],
+                ],
+                [
+                    'type' => 'http',
+                    'name' => 'api',
+                    'url' => 'https://example.com/mcp',
+                    'headers' => [],
+                ],
+                [
+                    'type' => 'sse',
+                    'name' => 'events',
+                    'url' => 'https://example.com/sse',
+                    'headers' => [['name' => 'X-API-Key', 'value' => 'secret']],
+                ],
+            ],
+            ['/shared'],
+        );
+
+        self::assertSame('sess_1', $session->getSessionId());
+    }
+
+    public function testStrictProtocolRejectsRelativeCwd(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionNew('repo');
+    }
+
+    public function testStrictProtocolRejectsAdditionalDirectoriesWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionNew('/repo', [], ['/shared']);
+    }
+
+    public function testStrictProtocolRejectsLoadResumeAndCloseWithoutCapabilities(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionLoad('sess_1', '/repo');
+    }
+
+    public function testStrictProtocolRejectsResumeWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionResume('sess_1', '/repo');
+    }
+
+    public function testStrictProtocolRejectsCloseWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionClose('sess_1');
+    }
+
+    public function testStrictProtocolRejectsInvalidMcpServerShape(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionNew('/repo', [
+            [
+                'name' => 'filesystem',
+                'command' => 'mcp-server',
+                'args' => ['--stdio'],
+            ],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsHttpMcpWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0, true);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+
+        $client->sessionNew('/repo', [
+            [
+                'type' => 'http',
+                'name' => 'api',
+                'url' => 'https://example.com/mcp',
+                'headers' => [],
+            ],
+        ]);
+    }
+
     public function testSessionListCallsAcpMethod(): void
     {
         $transport = $this->transportWithResult(['sessions' => [], 'nextCursor' => 'next']);
@@ -897,6 +1051,24 @@ final class ClientTest extends TestCase
 
         $response = self::decode($transport->sent[1]);
         self::assertSame(-32601, self::errorOf($response)['code']);
+    }
+
+    /**
+     * @param array<string, mixed> $agentCapabilities
+     */
+    private function initializedStrictTransport(array $agentCapabilities): FakeTransport
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => $agentCapabilities,
+            ],
+        ]);
+
+        return $transport;
     }
 
     private function transportWithResult(mixed $result): FakeTransport

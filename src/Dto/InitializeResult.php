@@ -105,4 +105,60 @@ final class InitializeResult
 
         return is_array($logout) && ($logout === [] || !array_is_list($logout));
     }
+
+    public function supportsLoadSession(): bool
+    {
+        return ($this->agentCapabilities['loadSession'] ?? false) === true;
+    }
+
+    public function supportsSessionResume(): bool
+    {
+        return $this->hasObjectCapability('sessionCapabilities', 'resume');
+    }
+
+    public function supportsSessionClose(): bool
+    {
+        return $this->hasObjectCapability('sessionCapabilities', 'close');
+    }
+
+    public function supportsAdditionalDirectories(): bool
+    {
+        return $this->hasObjectCapability('sessionCapabilities', 'additionalDirectories');
+    }
+
+    public function supportsMcpHttp(): bool
+    {
+        return $this->hasBooleanCapability('mcpCapabilities', 'http');
+    }
+
+    public function supportsMcpSse(): bool
+    {
+        return $this->hasBooleanCapability('mcpCapabilities', 'sse');
+    }
+
+    private function hasObjectCapability(string $group, string $capability): bool
+    {
+        $capabilities = $this->agentCapabilities[$group] ?? null;
+        if (!is_array($capabilities) || array_is_list($capabilities)) {
+            return false;
+        }
+
+        if (!array_key_exists($capability, $capabilities)) {
+            return false;
+        }
+
+        $value = $capabilities[$capability];
+
+        return is_array($value) && ($value === [] || !array_is_list($value));
+    }
+
+    private function hasBooleanCapability(string $group, string $capability): bool
+    {
+        $capabilities = $this->agentCapabilities[$group] ?? null;
+        if (!is_array($capabilities) || array_is_list($capabilities)) {
+            return false;
+        }
+
+        return ($capabilities[$capability] ?? false) === true;
+    }
 }

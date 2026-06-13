@@ -99,4 +99,29 @@ final class InitializeResultTest extends TestCase
             'agentCapabilities' => ['auth' => ['logout' => ['_meta' => []]]],
         ])->supportsLogout());
     }
+
+    public function testCapabilityHelpers(): void
+    {
+        $result = InitializeResult::fromArray([
+            'agentCapabilities' => [
+                'loadSession' => true,
+                'sessionCapabilities' => [
+                    'resume' => [],
+                    'close' => [],
+                    'additionalDirectories' => [],
+                ],
+                'mcpCapabilities' => [
+                    'http' => true,
+                    'sse' => true,
+                ],
+            ],
+        ]);
+
+        self::assertTrue($result->supportsLoadSession());
+        self::assertTrue($result->supportsSessionResume());
+        self::assertTrue($result->supportsSessionClose());
+        self::assertTrue($result->supportsAdditionalDirectories());
+        self::assertTrue($result->supportsMcpHttp());
+        self::assertTrue($result->supportsMcpSse());
+    }
 }

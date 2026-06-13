@@ -35,9 +35,12 @@ final class Client
     /** @var (callable(string, array<string, mixed>): mixed)|null */
     private $anyRequestHandler = null;
 
+    private ?InitializeResult $initializeResult = null;
+
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly float $defaultTimeout = 30.0,
+        private readonly bool $strictProtocol = false,
     ) {
     }
 
@@ -55,7 +58,10 @@ final class Client
             array_replace_recursive($this->defaultInitializeParams(), $params),
         );
 
-        return InitializeResult::fromArray($this->expectArrayResult($result, 'initialize'));
+        $initializeResult = InitializeResult::fromArray($this->expectArrayResult($result, 'initialize'));
+        $this->initializeResult = $initializeResult;
+
+        return $initializeResult;
     }
 
     /**
@@ -111,6 +117,13 @@ final class Client
      */
     public function logout(?float $timeout = null): array
     {
+        if ($this->strictProtocol) {
+            $this->requireInitialized('logout');
+            if (!$this->initializeResult?->supportsLogout()) {
+                throw new AcpException('Cannot call logout: agent did not advertise auth.logout');
+            }
+        }
+
         return $this->expectArrayResult($this->call('logout', [], $timeout), 'logout');
     }
 
@@ -128,6 +141,8 @@ final class Client
         array $additionalDirectories = [],
         ?float $timeout = null,
     ): Session {
+        $this->validateSessionSetup('session/new', $cwd, $mcpServers, $additionalDirectories);
+
         return Session::fromArray(
             $this->expectArrayResult(
                 $this->call(
@@ -155,6 +170,15 @@ final class Client
         array $additionalDirectories = [],
         ?float $timeout = null,
     ): mixed {
+        if ($this->strictProtocol) {
+            $initializeResult = $this->requireInitialized('session/load');
+            if (!$initializeResult->supportsLoadSession()) {
+                throw new AcpException('Cannot call session/load: agent did not advertise loadSession');
+            }
+        }
+
+        $this->validateSessionSetup('session/load', $cwd, $mcpServers, $additionalDirectories);
+
         return $this->call(
             'session/load',
             ['sessionId' => $sessionId] + $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
@@ -177,6 +201,15 @@ final class Client
         array $additionalDirectories = [],
         ?float $timeout = null,
     ): Session {
+        if ($this->strictProtocol) {
+            $initializeResult = $this->requireInitialized('session/resume');
+            if (!$initializeResult->supportsSessionResume()) {
+                throw new AcpException('Cannot call session/resume: agent did not advertise sessionCapabilities.resume');
+            }
+        }
+
+        $this->validateSessionSetup('session/resume', $cwd, $mcpServers, $additionalDirectories);
+
         return Session::fromArray(
             $this->expectArrayResult(
                 $this->call(
@@ -196,6 +229,13 @@ final class Client
      */
     public function sessionClose(string $sessionId, ?float $timeout = null): Session
     {
+        if ($this->strictProtocol) {
+            $initializeResult = $this->requireInitialized('session/close');
+            if (!$initializeResult->supportsSessionClose()) {
+                throw new AcpException('Cannot call session/close: agent did not advertise sessionCapabilities.close');
+            }
+        }
+
         return Session::fromArray(
             $this->expectArrayResult(
                 $this->call('session/close', ['sessionId' => $sessionId], $timeout),
@@ -468,6 +508,249 @@ final class Client
         if ($this->anyRequestHandler === $handler) {
             $this->anyRequestHandler = null;
         }
+    }
+
+    /**
+     * @param array<int, mixed> $mcpServers
+     * @param string[] $additionalDirectories
+     *
+     * @throws AcpException
+     */
+    private function validateSessionSetup(
+        string $method,
+        string $cwd,
+        array $mcpServers,
+        array $additionalDirectories,
+    ): void {
+        if (!$this->strictProtocol) {
+            return;
+        }
+
+        $initializeResult = $this->requireInitialized($method);
+
+        if (!$this->isAbsolutePath($cwd)) {
+            throw new AcpException("Invalid {$method} params: cwd must be an absolute path");
+        }
+
+        if ($additionalDirectories !== [] && !$initializeResult->supportsAdditionalDirectories()) {
+            throw new AcpException(
+                "Cannot call {$method} with additionalDirectories: agent did not advertise sessionCapabilities.additionalDirectories",
+            );
+        }
+
+        foreach ($additionalDirectories as $directory) {
+            if (!$this->isAbsolutePath($directory)) {
+                throw new AcpException(
+                    "Invalid {$method} params: additionalDirectories entries must be absolute paths",
+                );
+            }
+        }
+
+        $this->validateMcpServers($method, $mcpServers, $initializeResult);
+    }
+
+    /**
+     * @throws AcpException
+     */
+    private function requireInitialized(string $method): InitializeResult
+    {
+        if ($this->initializeResult === null) {
+            throw new AcpException("Cannot call {$method} before initialize() in strict protocol mode");
+        }
+
+        return $this->initializeResult;
+    }
+
+    private function isAbsolutePath(string $path): bool
+    {
+        if (str_starts_with($path, '/')) {
+            return true;
+        }
+
+        if (preg_match('/^[A-Za-z]:[\\\\\\/]/', $path) === 1) {
+            return true;
+        }
+
+        return str_starts_with($path, '\\\\');
+    }
+
+    /**
+     * @param array<int, mixed> $mcpServers
+     *
+     * @throws AcpException
+     */
+    private function validateMcpServers(
+        string $method,
+        array $mcpServers,
+        InitializeResult $initializeResult,
+    ): void {
+        if (!array_is_list($mcpServers)) {
+            throw new AcpException("Invalid {$method} params: mcpServers must be a list");
+        }
+
+        foreach ($mcpServers as $index => $server) {
+            $server = $this->requireObjectValue($method, "mcpServers[{$index}]", $server);
+
+            $type = $server['type'] ?? 'stdio';
+            if (!is_string($type)) {
+                throw new AcpException("Invalid {$method} params: mcpServers[{$index}].type must be a string");
+            }
+
+            match ($type) {
+                'stdio' => $this->validateStdioMcpServer($method, $index, $server),
+                'http' => $this->validateHttpMcpServer($method, $index, $server, $initializeResult),
+                'sse' => $this->validateSseMcpServer($method, $index, $server, $initializeResult),
+                default => throw new AcpException(
+                    "Invalid {$method} params: mcpServers[{$index}].type must be stdio, http, or sse",
+                ),
+            };
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     *
+     * @throws AcpException
+     */
+    private function validateStdioMcpServer(string $method, int $index, array $server): void
+    {
+        $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
+        $command = $this->requireStringField($method, "mcpServers[{$index}].command", $server, 'command');
+        if (!$this->isAbsolutePath($command)) {
+            throw new AcpException(
+                "Invalid {$method} params: mcpServers[{$index}].command must be an absolute path",
+            );
+        }
+
+        $this->requireStringListField($method, "mcpServers[{$index}].args", $server, 'args');
+
+        if (array_key_exists('env', $server)) {
+            $this->validateNameValueList($method, "mcpServers[{$index}].env", $server['env']);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     *
+     * @throws AcpException
+     */
+    private function validateHttpMcpServer(
+        string $method,
+        int $index,
+        array $server,
+        InitializeResult $initializeResult,
+    ): void {
+        if (!$initializeResult->supportsMcpHttp()) {
+            throw new AcpException(
+                "Cannot call {$method} with HTTP MCP server: agent did not advertise mcpCapabilities.http",
+            );
+        }
+
+        $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
+        $this->requireStringField($method, "mcpServers[{$index}].url", $server, 'url');
+        $this->validateNameValueList(
+            $method,
+            "mcpServers[{$index}].headers",
+            $server['headers'] ?? null,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $server
+     *
+     * @throws AcpException
+     */
+    private function validateSseMcpServer(
+        string $method,
+        int $index,
+        array $server,
+        InitializeResult $initializeResult,
+    ): void {
+        if (!$initializeResult->supportsMcpSse()) {
+            throw new AcpException(
+                "Cannot call {$method} with SSE MCP server: agent did not advertise mcpCapabilities.sse",
+            );
+        }
+
+        $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
+        $this->requireStringField($method, "mcpServers[{$index}].url", $server, 'url');
+        $this->validateNameValueList(
+            $method,
+            "mcpServers[{$index}].headers",
+            $server['headers'] ?? null,
+        );
+    }
+
+    /**
+     * @param array<mixed, mixed> $data
+     *
+     * @throws AcpException
+     */
+    private function requireStringField(string $method, string $label, array $data, string $key): string
+    {
+        if (!array_key_exists($key, $data) || !is_string($data[$key]) || $data[$key] === '') {
+            throw new AcpException("Invalid {$method} params: {$label} must be a non-empty string");
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<mixed, mixed> $data
+     *
+     * @throws AcpException
+     */
+    private function requireStringListField(string $method, string $label, array $data, string $key): void
+    {
+        if (!array_key_exists($key, $data) || !is_array($data[$key]) || !array_is_list($data[$key])) {
+            throw new AcpException("Invalid {$method} params: {$label} must be a list of strings");
+        }
+
+        foreach ($data[$key] as $value) {
+            if (!is_string($value)) {
+                throw new AcpException("Invalid {$method} params: {$label} must be a list of strings");
+            }
+        }
+    }
+
+    /**
+     * @throws AcpException
+     */
+    private function validateNameValueList(string $method, string $label, mixed $value): void
+    {
+        if (!is_array($value) || !array_is_list($value)) {
+            throw new AcpException("Invalid {$method} params: {$label} must be a list of name/value objects");
+        }
+
+        foreach ($value as $index => $entry) {
+            $entry = $this->requireObjectValue($method, "{$label}[{$index}]", $entry);
+
+            $this->requireStringField($method, "{$label}[{$index}].name", $entry, 'name');
+            $this->requireStringField($method, "{$label}[{$index}].value", $entry, 'value');
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     *
+     * @throws AcpException
+     */
+    private function requireObjectValue(string $method, string $label, mixed $value): array
+    {
+        if (!is_array($value) || array_is_list($value)) {
+            throw new AcpException("Invalid {$method} params: {$label} must be an object");
+        }
+
+        $object = [];
+        foreach ($value as $key => $entry) {
+            if (!is_string($key)) {
+                throw new AcpException("Invalid {$method} params: {$label} must be an object");
+            }
+
+            $object[$key] = $entry;
+        }
+
+        return $object;
     }
 
     /**
