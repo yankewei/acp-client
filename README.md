@@ -62,6 +62,30 @@ High-level methods return typed value objects (DTOs) such as `InitializeResult`,
 agent-specific extensions and ACP methods not yet wrapped by this library, and
 still return raw arrays/mixed values as the escape hatch.
 
+### Authentication
+
+ACP agents advertise authentication methods during initialization. Use
+`InitializeResult::getAuthMethods()` to choose a method, then call
+`authenticate()` with its ID. Only call `logout()` when the agent advertised the
+logout capability:
+
+```php
+$initialize = $client->initialize();
+
+$authMethod = $initialize->getAuthMethods()[0] ?? null;
+if ($authMethod !== null) {
+    $client->authenticate($authMethod->getId());
+}
+
+if ($initialize->supportsLogout()) {
+    $client->logout();
+}
+```
+
+If an agent requires authentication before creating a session, it can return a
+JSON-RPC error with code `-32000`. `JsonRpcException::isAuthenticationRequired()`
+is available for that branch.
+
 ## Kimi ACP smoke test
 
 If you have Kimi Code installed locally, you can test the stdio transport with:

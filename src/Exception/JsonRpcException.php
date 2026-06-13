@@ -6,6 +6,8 @@ namespace Yankewei\AcpClient\Exception;
 
 class JsonRpcException extends AcpException
 {
+    public const AUTHENTICATION_REQUIRED = -32000;
+
     public function __construct(
         private readonly int $jsonRpcCode,
         string $message,
@@ -22,5 +24,10 @@ class JsonRpcException extends AcpException
     public function getData(): mixed
     {
         return $this->data;
+    }
+
+    public function isAuthenticationRequired(): bool
+    {
+        return $this->jsonRpcCode === self::AUTHENTICATION_REQUIRED;
     }
 }
