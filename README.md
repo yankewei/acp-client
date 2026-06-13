@@ -162,6 +162,30 @@ $client->on('session/update', function (Notification $notification): void {
 });
 ```
 
+You can also use the typed `SessionUpdateMapper` to dispatch to concrete
+update objects:
+
+```php
+use Yankewei\AcpClient\Event\Update\SessionUpdateMapper;
+use Yankewei\AcpClient\Event\Update\AgentMessageChunkUpdate;
+use Yankewei\AcpClient\Event\Update\ToolCallUpdate;
+use Yankewei\AcpClient\Event\Update\ToolCallStatusUpdate;
+
+$client->on('session/update', function (Notification $notification): void {
+    $update = SessionUpdateMapper::fromNotification($notification);
+
+    match (true) {
+        $update instanceof AgentMessageChunkUpdate => handleMessageChunk($update),
+        $update instanceof ToolCallUpdate => handleToolCall($update),
+        $update instanceof ToolCallStatusUpdate => handleToolCallUpdate($update),
+        default => {},
+    };
+});
+```
+
+Unknown `sessionUpdate` variants return `null` so newer agent features do not
+break existing clients.
+
 Listeners run synchronously on the same thread when a notification arrives, so
 they keep the existing blocking API simple. Use `offNotification()` or `off()`
 to remove a listener when you no longer need it.
