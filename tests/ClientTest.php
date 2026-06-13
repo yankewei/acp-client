@@ -646,6 +646,251 @@ final class ClientTest extends TestCase
         self::assertSame($prompt, self::paramsOf($sent)['prompt']);
     }
 
+    public function testStrictProtocolRequiresInitializeBeforeSessionPrompt(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Cannot call session/prompt before initialize() in strict protocol mode');
+
+        $client->sessionPrompt('sess_1', 'Hello');
+    }
+
+    public function testStrictProtocolAcceptsPromptCapabilities(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => [
+                'image' => true,
+                'audio' => true,
+                'embeddedContext' => true,
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => ['stopReason' => 'end_turn'],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png', 'annotations' => []],
+            ['type' => 'audio', 'data' => 'base64-audio', 'mimeType' => 'audio/mpeg'],
+            ['type' => 'resource', 'resource' => ['uri' => 'file:///repo/a.php', 'text' => 'contents']],
+        ]);
+
+        $sent = self::decode($transport->sent[1]);
+        self::assertSame('session/prompt', $sent['method']);
+    }
+
+    public function testStrictProtocolAcceptsResourceLinkContentBlock(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => ['stopReason' => 'end_turn'],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+        $client->sessionPrompt('sess_1', [
+            [
+                'type' => 'resource_link',
+                'uri' => 'file:///repo/a.php',
+                'name' => 'a.php',
+                'mimeType' => 'text/x-php',
+                'title' => 'Source file',
+                'description' => 'File to review',
+                'size' => 123,
+            ],
+        ]);
+
+        $sent = self::decode($transport->sent[1]);
+        self::assertSame('session/prompt', $sent['method']);
+    }
+
+    public function testStrictProtocolRejectsPromptContentWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage(
+            'Cannot call session/prompt with image content: agent did not advertise promptCapabilities.image',
+        );
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png'],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsInvalidPromptBlock(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].text must be a string');
+
+        $client->sessionPrompt('sess_1', [['type' => 'text']]);
+    }
+
+    public function testStrictProtocolRejectsNonListPromptArray(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt must be a list of content blocks');
+
+        // @phpstan-ignore argument.type (intentionally passing an associative array to verify rejection)
+        $client->sessionPrompt('sess_1', ['type' => 'text', 'text' => 'Hello']);
+    }
+
+    public function testStrictProtocolRejectsInvalidResourceLinkOptionalField(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].size must be an integer');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'resource_link', 'uri' => 'file:///repo/a.php', 'name' => 'a.php', 'size' => '123'],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsResourceWithoutUri(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['embeddedContext' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].resource.uri must be a string');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'resource', 'resource' => ['text' => 'contents']],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsResourceWithoutTextOrBlob(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['embeddedContext' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].resource must include text or blob');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'resource', 'resource' => ['uri' => 'file:///repo/a.php']],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsImageWithoutData(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['image' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].data must be a string');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'image', 'mimeType' => 'image/png'],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsAudioWithoutMimeType(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['audio' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].mimeType must be a string');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'audio', 'data' => 'base64-audio'],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsInvalidAnnotations(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['image' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].annotations must be an object');
+
+        $client->sessionPrompt('sess_1', [
+            [
+                'type' => 'image',
+                'data' => 'base64-image',
+                'mimeType' => 'image/png',
+                'annotations' => ['invalid'],
+            ],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsImageWithInvalidUri(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['image' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].uri must be a string');
+
+        $client->sessionPrompt('sess_1', [
+            ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png', 'uri' => 123],
+        ]);
+    }
+
+    public function testStrictProtocolRejectsResourceWithBothTextAndBlob(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'promptCapabilities' => ['embeddedContext' => true],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage(
+            'Invalid session/prompt params: prompt[0].resource cannot include both text and blob',
+        );
+
+        $client->sessionPrompt('sess_1', [
+            [
+                'type' => 'resource',
+                'resource' => [
+                    'uri' => 'file:///repo/a.php',
+                    'text' => 'contents',
+                    'blob' => 'base64',
+                ],
+            ],
+        ]);
+    }
+
     public function testSessionCancelSendsNotification(): void
     {
         $transport = new FakeTransport();

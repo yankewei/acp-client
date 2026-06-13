@@ -135,6 +135,21 @@ final class InitializeResult
         return $this->hasBooleanCapability('mcpCapabilities', 'sse');
     }
 
+    public function supportsPromptImage(): bool
+    {
+        return $this->hasBooleanCapability('promptCapabilities', 'image');
+    }
+
+    public function supportsPromptAudio(): bool
+    {
+        return $this->hasBooleanCapability('promptCapabilities', 'audio');
+    }
+
+    public function supportsPromptEmbeddedContext(): bool
+    {
+        return $this->hasBooleanCapability('promptCapabilities', 'embeddedContext');
+    }
+
     private function hasObjectCapability(string $group, string $capability): bool
     {
         $capabilities = $this->agentCapabilities[$group] ?? null;
@@ -160,4 +175,5 @@ final class InitializeResult
 
         return ($capabilities[$capability] ?? false) === true;
     }
+
 }

@@ -8,11 +8,26 @@ use Yankewei\AcpClient\Exception\AcpException;
 
 final class PromptResult
 {
+    public const STOP_REASON_END_TURN = 'end_turn';
+    public const STOP_REASON_MAX_TOKENS = 'max_tokens';
+    public const STOP_REASON_MAX_TURN_REQUESTS = 'max_turn_requests';
+    public const STOP_REASON_REFUSAL = 'refusal';
+    public const STOP_REASON_CANCELLED = 'cancelled';
+
+    /** @var array<string, true> */
+    private const STOP_REASONS = [
+        self::STOP_REASON_END_TURN => true,
+        self::STOP_REASON_MAX_TOKENS => true,
+        self::STOP_REASON_MAX_TURN_REQUESTS => true,
+        self::STOP_REASON_REFUSAL => true,
+        self::STOP_REASON_CANCELLED => true,
+    ];
+
     /**
      * @param array<string, mixed> $data
      */
     public function __construct(
-        private readonly ?string $stopReason,
+        private readonly string $stopReason,
         private readonly array $data,
     ) {
     }
@@ -24,14 +39,42 @@ final class PromptResult
      */
     public static function fromArray(array $data): self
     {
-        $stopReason = DtoHelper::optionalString($data, 'stopReason');
+        $stopReason = DtoHelper::requireString($data, 'stopReason');
+        if (!isset(self::STOP_REASONS[$stopReason])) {
+            throw new AcpException('Invalid session/prompt response: stopReason is not supported');
+        }
 
         return new self($stopReason, $data);
     }
 
-    public function getStopReason(): ?string
+    public function getStopReason(): string
     {
         return $this->stopReason;
+    }
+
+    public function isEndTurn(): bool
+    {
+        return $this->stopReason === self::STOP_REASON_END_TURN;
+    }
+
+    public function isMaxTokens(): bool
+    {
+        return $this->stopReason === self::STOP_REASON_MAX_TOKENS;
+    }
+
+    public function isMaxTurnRequests(): bool
+    {
+        return $this->stopReason === self::STOP_REASON_MAX_TURN_REQUESTS;
+    }
+
+    public function isRefusal(): bool
+    {
+        return $this->stopReason === self::STOP_REASON_REFUSAL;
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->stopReason === self::STOP_REASON_CANCELLED;
     }
 
     /**

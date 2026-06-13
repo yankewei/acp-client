@@ -318,13 +318,20 @@ final class Client
      */
     public function sessionPrompt(string $sessionId, string|array $prompt, ?float $timeout = null): PromptResult
     {
+        if ($this->strictProtocol && is_array($prompt) && !array_is_list($prompt)) {
+            throw new AcpException('Invalid session/prompt params: prompt must be a list of content blocks');
+        }
+
+        $prompt = $this->normalizePrompt($prompt);
+        $this->validatePrompt('session/prompt', $prompt);
+
         return PromptResult::fromArray(
             $this->expectArrayResult(
                 $this->call(
                     'session/prompt',
                     [
                         'sessionId' => $sessionId,
-                        'prompt' => $this->normalizePrompt($prompt),
+                        'prompt' => $prompt,
                     ],
                     $timeout,
                 ),
@@ -746,7 +753,7 @@ final class Client
      */
     private function requireObjectValue(string $method, string $label, mixed $value): array
     {
-        if (!is_array($value) || array_is_list($value)) {
+        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
             throw new AcpException("Invalid {$method} params: {$label} must be an object");
         }
 
@@ -797,6 +804,210 @@ final class Client
         }
 
         return array_values($prompt);
+    }
+
+    /**
+     * @param array<int, mixed> $prompt
+     *
+     * @throws AcpException
+     */
+    private function validatePrompt(string $method, array $prompt): void
+    {
+        if (!$this->strictProtocol) {
+            return;
+        }
+
+        $initializeResult = $this->requireInitialized($method);
+
+        foreach ($prompt as $index => $block) {
+            $block = $this->requireObjectValue($method, "prompt[{$index}]", $block);
+            $type = $block['type'] ?? null;
+            if (!is_string($type)) {
+                throw new AcpException("Invalid {$method} params: prompt[{$index}].type must be a string");
+            }
+
+            $this->validateOptionalObjectField($method, "prompt[{$index}].annotations", $block, 'annotations');
+
+            match ($type) {
+                'text' => $this->validateTextContentBlock($method, $block, $index),
+                'resource_link' => $this->validateResourceLinkContentBlock($method, $block, $index),
+                'image' => $this->validateCapabilityContentBlock(
+                    $method,
+                    $block,
+                    $index,
+                    'image',
+                    $initializeResult->supportsPromptImage(),
+                    'promptCapabilities.image',
+                ),
+                'audio' => $this->validateCapabilityContentBlock(
+                    $method,
+                    $block,
+                    $index,
+                    'audio',
+                    $initializeResult->supportsPromptAudio(),
+                    'promptCapabilities.audio',
+                ),
+                'resource' => $this->validateEmbeddedContextContentBlock($method, $initializeResult, $block, $index),
+                default => throw new AcpException(
+                    "Invalid {$method} params: prompt[{$index}].type is not a supported content block type",
+                ),
+            };
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $block
+     *
+     * @throws AcpException
+     */
+    private function validateTextContentBlock(string $method, array $block, int $index): void
+    {
+        if (!array_key_exists('text', $block) || !is_string($block['text'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].text must be a string");
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $block
+     *
+     * @throws AcpException
+     */
+    private function validateResourceLinkContentBlock(string $method, array $block, int $index): void
+    {
+        if (!array_key_exists('uri', $block) || !is_string($block['uri'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].uri must be a string");
+        }
+
+        if (!array_key_exists('name', $block) || !is_string($block['name'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].name must be a string");
+        }
+
+        $this->validateOptionalStringField($method, "prompt[{$index}].mimeType", $block, 'mimeType');
+        $this->validateOptionalStringField($method, "prompt[{$index}].title", $block, 'title');
+        $this->validateOptionalStringField($method, "prompt[{$index}].description", $block, 'description');
+        $this->validateOptionalIntField($method, "prompt[{$index}].size", $block, 'size');
+    }
+
+    /**
+     * @param array<string, mixed> $block
+     *
+     * @throws AcpException
+     */
+    private function validateCapabilityContentBlock(
+        string $method,
+        array $block,
+        int $index,
+        string $type,
+        bool $supported,
+        string $capability,
+    ): void {
+        if (!$supported) {
+            throw new AcpException(
+                "Cannot call {$method} with {$type} content: agent did not advertise {$capability}",
+            );
+        }
+
+        if (!array_key_exists('data', $block) || !is_string($block['data'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].data must be a string");
+        }
+
+        if (!array_key_exists('mimeType', $block) || !is_string($block['mimeType'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].mimeType must be a string");
+        }
+
+        if ($type === 'image') {
+            $this->validateOptionalStringField($method, "prompt[{$index}].uri", $block, 'uri');
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $block
+     *
+     * @throws AcpException
+     */
+    private function validateEmbeddedContextContentBlock(
+        string $method,
+        InitializeResult $initializeResult,
+        array $block,
+        int $index,
+    ): void {
+        if (!$initializeResult->supportsPromptEmbeddedContext()) {
+            throw new AcpException(
+                "Cannot call {$method} with resource content: agent did not advertise promptCapabilities.embeddedContext",
+            );
+        }
+
+        if (!array_key_exists('resource', $block)) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].resource must be an object");
+        }
+
+        $resource = $this->requireObjectValue($method, "prompt[{$index}].resource", $block['resource']);
+
+        if (!array_key_exists('uri', $resource) || !is_string($resource['uri'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].resource.uri must be a string");
+        }
+
+        $hasText = array_key_exists('text', $resource);
+        $hasBlob = array_key_exists('blob', $resource);
+        if (!$hasText && !$hasBlob) {
+            throw new AcpException(
+                "Invalid {$method} params: prompt[{$index}].resource must include text or blob",
+            );
+        }
+
+        if ($hasText && $hasBlob) {
+            throw new AcpException(
+                "Invalid {$method} params: prompt[{$index}].resource cannot include both text and blob",
+            );
+        }
+
+        if ($hasText && !is_string($resource['text'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].resource.text must be a string");
+        }
+
+        if ($hasBlob && !is_string($resource['blob'])) {
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].resource.blob must be a string");
+        }
+
+        $this->validateOptionalStringField($method, "prompt[{$index}].resource.mimeType", $resource, 'mimeType');
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @throws AcpException
+     */
+    private function validateOptionalStringField(string $method, string $label, array $data, string $key): void
+    {
+        if (array_key_exists($key, $data) && !is_string($data[$key])) {
+            throw new AcpException("Invalid {$method} params: {$label} must be a string");
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @throws AcpException
+     */
+    private function validateOptionalIntField(string $method, string $label, array $data, string $key): void
+    {
+        if (array_key_exists($key, $data) && !is_int($data[$key])) {
+            throw new AcpException("Invalid {$method} params: {$label} must be an integer");
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     *
+     * @throws AcpException
+     */
+    private function validateOptionalObjectField(string $method, string $label, array $data, string $key): void
+    {
+        if (!array_key_exists($key, $data)) {
+            return;
+        }
+
+        $this->requireObjectValue($method, $label, $data[$key]);
     }
 
     /**

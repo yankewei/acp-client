@@ -62,6 +62,9 @@ High-level methods return typed value objects (DTOs) such as `InitializeResult`,
 agent-specific extensions and ACP methods not yet wrapped by this library, and
 still return raw arrays/mixed values as the escape hatch.
 
+`PromptResult::getStopReason()` returns the required ACP stop reason string.
+Use helpers such as `isEndTurn()` and `isCancelled()` for common branches.
+
 ### Authentication
 
 ACP agents advertise authentication methods during initialization. Use
@@ -112,9 +115,14 @@ locally:
 - stdio, HTTP, and SSE MCP server configurations must match the protocol shape
 - HTTP and SSE MCP servers require `mcpCapabilities.http` or
   `mcpCapabilities.sse`
+- `session/prompt` content blocks must match the advertised
+  `promptCapabilities`; image, audio, and embedded resource content are rejected
+  unless the agent advertised support
 
 If you need a permissive thin JSON-RPC wrapper for agent-specific extensions or
-compatibility testing, disable strict mode explicitly:
+compatibility testing, disable strict mode explicitly. In that mode prompt
+capability checks are also skipped and content blocks are passed through as raw
+JSON-RPC params:
 
 ```php
 $client = new Client($transport, strictProtocol: false);

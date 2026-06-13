@@ -132,6 +132,11 @@ final class InitializeResultTest extends TestCase
                     'http' => true,
                     'sse' => true,
                 ],
+                'promptCapabilities' => [
+                    'image' => true,
+                    'audio' => true,
+                    'embeddedContext' => true,
+                ],
             ],
         ]);
 
@@ -143,5 +148,39 @@ final class InitializeResultTest extends TestCase
         self::assertTrue($result->supportsAdditionalDirectories());
         self::assertTrue($result->supportsMcpHttp());
         self::assertTrue($result->supportsMcpSse());
+        self::assertTrue($result->supportsPromptImage());
+        self::assertTrue($result->supportsPromptAudio());
+        self::assertTrue($result->supportsPromptEmbeddedContext());
+    }
+
+    public function testPromptCapabilitiesRequireBooleanValues(): void
+    {
+        $result = InitializeResult::fromArray([
+            'agentCapabilities' => [
+                'promptCapabilities' => [
+                    'image' => true,
+                    'audio' => true,
+                    'embeddedContext' => true,
+                ],
+            ],
+        ]);
+
+        self::assertTrue($result->supportsPromptImage());
+        self::assertTrue($result->supportsPromptAudio());
+        self::assertTrue($result->supportsPromptEmbeddedContext());
+
+        $result = InitializeResult::fromArray([
+            'agentCapabilities' => [
+                'promptCapabilities' => [
+                    'image' => [],
+                    'audio' => [],
+                    'embeddedContext' => [],
+                ],
+            ],
+        ]);
+
+        self::assertFalse($result->supportsPromptImage());
+        self::assertFalse($result->supportsPromptAudio());
+        self::assertFalse($result->supportsPromptEmbeddedContext());
     }
 }
