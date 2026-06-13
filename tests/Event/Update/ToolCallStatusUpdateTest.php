@@ -70,4 +70,25 @@ final class ToolCallStatusUpdateTest extends TestCase
             'content' => ['foo' => 'bar'],
         ]);
     }
+
+    public function testRejectsMissingToolCallId(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid tool_call_update update: toolCallId must be a string');
+
+        ToolCallStatusUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'tool_call_update',
+        ]);
+    }
+
+    public function testRejectsInvalidToolCallIdType(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid tool_call_update update: toolCallId must be a string');
+
+        ToolCallStatusUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'tool_call_update',
+            'toolCallId' => 123,
+        ]);
+    }
 }
