@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
 use Yankewei\AcpClient\Client;
+use Yankewei\AcpClient\Dto\RequestPermission;
+use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
 use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Exception\JsonRpcException;
@@ -1485,6 +1487,142 @@ final class ClientTest extends TestCase
         $client->onRequest('fs/read_text_file', $handler);
         $client->offRequest('fs/read_text_file', $handler);
 
+        $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame(-32601, self::errorOf($response)['code']);
+    }
+
+    public function testRequestPermissionHandlerRespondsWithSelectedOutcome(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'perm-1',
+            'method' => 'session/request_permission',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'toolCall' => [
+                    'toolCallId' => 'call_1',
+                ],
+                'options' => [
+                    [
+                        'optionId' => 'allow-once',
+                        'name' => 'Allow once',
+                        'kind' => 'allow_once',
+                    ],
+                ],
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onRequestPermission(static function (RequestPermission $request): RequestPermissionOutcome {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('call_1', $request->getToolCallId());
+            self::assertSame('allow-once', $request->getOptions()[0]->getOptionId());
+
+            return RequestPermissionOutcome::selected('allow-once');
+        });
+
+        self::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame('perm-1', $response['id']);
+        self::assertSame(
+            [
+                'outcome' => [
+                    'outcome' => 'selected',
+                    'optionId' => 'allow-once',
+                ],
+            ],
+            $response['result'],
+        );
+    }
+
+    public function testSessionCancelRespondsToPendingRequestPermissionWithCancelledOutcome(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'perm-1',
+            'method' => 'session/request_permission',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'toolCall' => [
+                    'toolCallId' => 'call_1',
+                ],
+                'options' => [
+                    [
+                        'optionId' => 'allow-once',
+                        'name' => 'Allow once',
+                        'kind' => 'allow_once',
+                    ],
+                ],
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['stopReason' => 'cancelled'],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onRequestPermission(function (RequestPermission $request) use ($client): RequestPermissionOutcome {
+            self::assertSame('sess_1', $request->getSessionId());
+            $client->sessionCancel('sess_1');
+
+            return RequestPermissionOutcome::selected('allow-once');
+        });
+
+        self::assertTrue($client->sessionPrompt('sess_1', 'Cancel this')->isCancelled());
+
+        self::assertCount(3, $transport->sent);
+
+        $cancel = self::decode($transport->sent[1]);
+        self::assertSame('session/cancel', $cancel['method']);
+        self::assertArrayNotHasKey('id', $cancel);
+
+        $permissionResponse = self::decode($transport->sent[2]);
+        self::assertSame('perm-1', $permissionResponse['id']);
+        self::assertSame(
+            [
+                'outcome' => [
+                    'outcome' => 'cancelled',
+                ],
+            ],
+            $permissionResponse['result'],
+        );
+    }
+
+    public function testRequestPermissionHandlerCanBeRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'perm-1',
+            'method' => 'session/request_permission',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'toolCall' => ['toolCallId' => 'call_1'],
+                'options' => [],
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $handler = static fn (RequestPermission $request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
+
+        $client->onRequestPermission($handler);
+        $client->offRequestPermission($handler);
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);

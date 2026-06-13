@@ -7,6 +7,8 @@ namespace Yankewei\AcpClient;
 use JsonException;
 use Throwable;
 use Yankewei\AcpClient\Dto\InitializeResult;
+use Yankewei\AcpClient\Dto\RequestPermission;
+use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
 use Yankewei\AcpClient\Dto\PromptResult;
 use Yankewei\AcpClient\Dto\Session;
 use Yankewei\AcpClient\Dto\SessionListResult;
@@ -35,6 +37,12 @@ final class Client
 
     /** @var (callable(string, array<string, mixed>): mixed)|null */
     private $anyRequestHandler = null;
+
+    /** @var (callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>))|null */
+    private $requestPermissionHandler = null;
+
+    /** @var array<string, array{id: int|string, sessionId: string}> */
+    private array $pendingPermissionRequests = [];
 
     private ?InitializeResult $initializeResult = null;
 
@@ -347,6 +355,7 @@ final class Client
     public function sessionCancel(string $sessionId): void
     {
         $this->notify('session/cancel', ['sessionId' => $sessionId]);
+        $this->cancelPendingPermissionRequests($sessionId);
     }
 
     /**
@@ -538,6 +547,34 @@ final class Client
     {
         if ($this->anyRequestHandler === $handler) {
             $this->anyRequestHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP session/request_permission requests.
+     *
+     * The handler may return RequestPermissionOutcome::selected($optionId),
+     * RequestPermissionOutcome::cancelled(), or a raw result array matching the
+     * ACP response shape for compatibility with agent-specific extensions.
+     *
+     * Setting a new handler replaces any previously registered permission handler.
+     *
+     * @param callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>) $handler
+     */
+    public function onRequestPermission(callable $handler): void
+    {
+        $this->requestPermissionHandler = $handler;
+    }
+
+    /**
+     * Remove the typed permission handler only if it is currently registered.
+     *
+     * @param callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>) $handler
+     */
+    public function offRequestPermission(callable $handler): void
+    {
+        if ($this->requestPermissionHandler === $handler) {
+            $this->requestPermissionHandler = null;
         }
     }
 
@@ -1180,6 +1217,11 @@ final class Client
             return;
         }
 
+        if ($method === 'session/request_permission' && $this->requestPermissionHandler !== null) {
+            $this->handleRequestPermission($id, $data);
+            return;
+        }
+
         $methodHandler = $this->requestHandlers[$method][0] ?? null;
         $anyHandler = $this->anyRequestHandler;
 
@@ -1200,6 +1242,79 @@ final class Client
             $this->sendResponse($id, $result);
         } catch (Throwable $e) {
             $this->sendError($id, -32603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleRequestPermission(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = RequestPermission::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32602, $e->getMessage());
+            return;
+        }
+
+        $key = $this->responseKey($id);
+        $this->pendingPermissionRequests[$key] = [
+            'id' => $id,
+            'sessionId' => $request->getSessionId(),
+        ];
+
+        try {
+            $handler = $this->requestPermissionHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32601, 'Method not found: session/request_permission');
+                return;
+            }
+
+            $result = $handler($request);
+            if (!array_key_exists($key, $this->pendingPermissionRequests)) {
+                return;
+            }
+
+            unset($this->pendingPermissionRequests[$key]);
+            $this->sendResponse($id, $this->normalizeRequestPermissionResult($result));
+        } catch (Throwable $e) {
+            if (!array_key_exists($key, $this->pendingPermissionRequests)) {
+                return;
+            }
+
+            unset($this->pendingPermissionRequests[$key]);
+            $this->sendError($id, -32603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param RequestPermissionOutcome|array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function normalizeRequestPermissionResult(RequestPermissionOutcome|array $result): array
+    {
+        if ($result instanceof RequestPermissionOutcome) {
+            return $result->toResultArray();
+        }
+
+        return $result;
+    }
+
+    private function cancelPendingPermissionRequests(string $sessionId): void
+    {
+        foreach ($this->pendingPermissionRequests as $key => $request) {
+            if ($request['sessionId'] !== $sessionId) {
+                continue;
+            }
+
+            unset($this->pendingPermissionRequests[$key]);
+            $this->sendResponse($request['id'], RequestPermissionOutcome::cancelled()->toResultArray());
         }
     }
 

@@ -235,6 +235,27 @@ $client->onAnyRequest(function (string $method, array $params): mixed {
 Method-specific handlers registered with `onRequest()` take precedence over the
 fallback handler. Use `offAnyRequest()` to remove a fallback handler.
 
+For the standard ACP `session/request_permission` method, use the typed helper:
+
+```php
+use Yankewei\AcpClient\Dto\RequestPermission;
+use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
+
+$client->onRequestPermission(function (RequestPermission $request): RequestPermissionOutcome {
+    foreach ($request->getOptions() as $option) {
+        if ($option->getKind() === 'allow_once') {
+            return RequestPermissionOutcome::selected($option->getOptionId());
+        }
+    }
+
+    return RequestPermissionOutcome::cancelled();
+});
+```
+
+If `sessionCancel($sessionId)` is called while a `session/request_permission`
+handler is still pending for the same session, the client sends the ACP-required
+`cancelled` permission outcome and suppresses any later handler result.
+
 ## Errors
 
 - `TransportException`: process start, read/write, timeout, or closed transport failures
