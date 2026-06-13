@@ -37,8 +37,9 @@ final class AgentMessageChunkUpdate implements SessionUpdate
                 'messageId',
                 'Invalid agent_message_chunk update: messageId must be a string or null',
             ),
-            Assert::object(
-                $update['content'] ?? null,
+            Assert::requiredObjectField(
+                $update,
+                'content',
                 'Invalid agent_message_chunk update: content must be an object',
             ),
         );
