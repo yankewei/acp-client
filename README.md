@@ -179,7 +179,7 @@ $client->on('session/update', function (Notification $notification): void {
         $update instanceof AgentMessageChunkUpdate => handleMessageChunk($update),
         $update instanceof ToolCallUpdate => handleToolCall($update),
         $update instanceof ToolCallStatusUpdate => handleToolCallUpdate($update),
-        default => {},
+        default => null,
     };
 });
 ```
