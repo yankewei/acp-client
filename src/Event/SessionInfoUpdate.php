@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Event;
 
+use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
-final class SessionInfoUpdate
+final class SessionInfoUpdate implements SessionUpdate
 {
     /**
      * @param array<string, mixed>|null $meta
@@ -63,6 +64,11 @@ final class SessionInfoUpdate
     public function getSessionId(): string
     {
         return $this->sessionId;
+    }
+
+    public function getUpdateType(): string
+    {
+        return 'session_info_update';
     }
 
     public function hasTitle(): bool
