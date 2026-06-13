@@ -6,7 +6,10 @@ namespace Yankewei\AcpClient\Tests;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use RuntimeException;
 use Yankewei\AcpClient\Client;
+use Yankewei\AcpClient\Event\Notification;
+use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Exception\JsonRpcException;
 use Yankewei\AcpClient\Exception\TransportException;
 use Yankewei\AcpClient\JsonRpc\Request;
@@ -21,10 +24,60 @@ final class ClientTest extends TestCase
         $property->setValue(null, 0);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function encode(array $data): string
+    {
+        return json_encode($data, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function decode(string $json): array
+    {
+        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($decoded);
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
+    }
+
+    /**
+     * @param array<string, mixed> $sent
+     *
+     * @return array<string, mixed>
+     */
+    private static function paramsOf(array $sent): array
+    {
+        self::assertIsArray($sent['params']);
+
+        /** @var array<string, mixed> $params */
+        $params = $sent['params'];
+
+        return $params;
+    }
+
+    /**
+     * @param array<string, mixed> $array
+     *
+     * @return array<string, mixed>
+     */
+    private static function getArray(array $array, string $key): array
+    {
+        self::assertIsArray($array[$key]);
+
+        /** @var array<string, mixed> $value */
+        $value = $array[$key];
+
+        return $value;
+    }
+
     public function testCallReturnsResult(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => ['status' => 'ok'],
@@ -37,7 +90,7 @@ final class ClientTest extends TestCase
         self::assertSame(['status' => 'ok'], $result);
         self::assertCount(1, $transport->sent);
 
-        $sent = json_decode($transport->sent[0], true);
+        $sent = self::decode($transport->sent[0]);
         self::assertSame('2.0', $sent['jsonrpc']);
         self::assertSame('initialize', $sent['method']);
         self::assertIsInt($sent['id']);
@@ -46,7 +99,7 @@ final class ClientTest extends TestCase
     public function testInitializeSendsDefaultAcpParams(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => [
@@ -57,24 +110,30 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0);
 
-        self::assertSame([
-            'protocolVersion' => 1,
-            'agentCapabilities' => [],
-        ], $client->initialize());
+        $result = $client->initialize();
+        self::assertSame(1, $result->getProtocolVersion());
+        self::assertSame([], $result->getAgentCapabilities());
 
-        $sent = json_decode($transport->sent[0], true);
+        $sent = self::decode($transport->sent[0]);
         self::assertSame('initialize', $sent['method']);
-        self::assertSame(1, $sent['params']['protocolVersion']);
-        self::assertFalse($sent['params']['clientCapabilities']['fs']['readTextFile']);
-        self::assertFalse($sent['params']['clientCapabilities']['fs']['writeTextFile']);
-        self::assertFalse($sent['params']['clientCapabilities']['terminal']);
-        self::assertSame('yankewei/acp-client', $sent['params']['clientInfo']['name']);
+
+        $params = self::paramsOf($sent);
+        self::assertSame(1, $params['protocolVersion']);
+
+        $clientCapabilities = self::getArray($params, 'clientCapabilities');
+        $fs = self::getArray($clientCapabilities, 'fs');
+        self::assertFalse($fs['readTextFile']);
+        self::assertFalse($fs['writeTextFile']);
+        self::assertFalse($clientCapabilities['terminal']);
+
+        $clientInfo = self::getArray($params, 'clientInfo');
+        self::assertSame('yankewei/acp-client', $clientInfo['name']);
     }
 
     public function testInitializeAllowsParamOverrides(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => [
@@ -93,10 +152,15 @@ final class ClientTest extends TestCase
             ],
         ]);
 
-        $sent = json_decode($transport->sent[0], true);
-        self::assertTrue($sent['params']['clientCapabilities']['terminal']);
-        self::assertSame('custom-client', $sent['params']['clientInfo']['name']);
-        self::assertSame('ACP Client for PHP', $sent['params']['clientInfo']['title']);
+        $sent = self::decode($transport->sent[0]);
+
+        $params = self::paramsOf($sent);
+        $clientCapabilities = self::getArray($params, 'clientCapabilities');
+        self::assertTrue($clientCapabilities['terminal']);
+
+        $clientInfo = self::getArray($params, 'clientInfo');
+        self::assertSame('custom-client', $clientInfo['name']);
+        self::assertSame('ACP Client for PHP', $clientInfo['title']);
     }
 
     public function testAuthenticateCallsAcpMethod(): void
@@ -128,16 +192,14 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['sessionId' => 'sess_1']);
         $client = new Client($transport, 1.0);
 
-        self::assertSame(
-            ['sessionId' => 'sess_1'],
-            $client->sessionNew('/repo', [['name' => 'fs']], ['/shared']),
-        );
+        $session = $client->sessionNew('/repo', [['name' => 'fs']], ['/shared']);
+        self::assertSame('sess_1', $session->getSessionId());
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/new', $sent['method']);
-        self::assertSame('/repo', $sent['params']['cwd']);
-        self::assertSame([['name' => 'fs']], $sent['params']['mcpServers']);
-        self::assertSame(['/shared'], $sent['params']['additionalDirectories']);
+        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
+        self::assertSame([['name' => 'fs']], self::paramsOf($sent)['mcpServers']);
+        self::assertSame(['/shared'], self::paramsOf($sent)['additionalDirectories']);
     }
 
     public function testSessionLoadCallsAcpMethod(): void
@@ -149,10 +211,10 @@ final class ClientTest extends TestCase
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/load', $sent['method']);
-        self::assertSame('sess_1', $sent['params']['sessionId']);
-        self::assertSame('/repo', $sent['params']['cwd']);
-        self::assertSame([], $sent['params']['mcpServers']);
-        self::assertArrayNotHasKey('additionalDirectories', $sent['params']);
+        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
+        self::assertSame([], self::paramsOf($sent)['mcpServers']);
+        self::assertArrayNotHasKey('additionalDirectories', self::paramsOf($sent));
     }
 
     public function testSessionResumeCallsAcpMethod(): void
@@ -160,12 +222,13 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['ready' => true]);
         $client = new Client($transport, 1.0);
 
-        self::assertSame(['ready' => true], $client->sessionResume('sess_1', '/repo'));
+        $session = $client->sessionResume('sess_1', '/repo');
+        self::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/resume', $sent['method']);
-        self::assertSame('sess_1', $sent['params']['sessionId']);
-        self::assertSame('/repo', $sent['params']['cwd']);
+        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
     }
 
     public function testSessionCloseCallsAcpMethod(): void
@@ -173,7 +236,8 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0);
 
-        self::assertSame([], $client->sessionClose('sess_1'));
+        $session = $client->sessionClose('sess_1');
+        self::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/close', $sent['method']);
@@ -185,10 +249,9 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['sessions' => [], 'nextCursor' => 'next']);
         $client = new Client($transport, 1.0);
 
-        self::assertSame(
-            ['sessions' => [], 'nextCursor' => 'next'],
-            $client->sessionList('/repo', 'cursor'),
-        );
+        $result = $client->sessionList('/repo', 'cursor');
+        self::assertSame([], $result->getSessions());
+        self::assertSame('next', $result->getNextCursor());
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/list', $sent['method']);
@@ -212,12 +275,13 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['stopReason' => 'end_turn']);
         $client = new Client($transport, 1.0);
 
-        self::assertSame(['stopReason' => 'end_turn'], $client->sessionPrompt('sess_1', 'Hello'));
+        $result = $client->sessionPrompt('sess_1', 'Hello');
+        self::assertSame('end_turn', $result->getStopReason());
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/prompt', $sent['method']);
-        self::assertSame('sess_1', $sent['params']['sessionId']);
-        self::assertSame([['type' => 'text', 'text' => 'Hello']], $sent['params']['prompt']);
+        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        self::assertSame([['type' => 'text', 'text' => 'Hello']], self::paramsOf($sent)['prompt']);
     }
 
     public function testSessionPromptAcceptsContentBlocks(): void
@@ -232,7 +296,7 @@ final class ClientTest extends TestCase
         $client->sessionPrompt('sess_1', $prompt);
 
         $sent = $this->sentMessage($transport);
-        self::assertSame($prompt, $sent['params']['prompt']);
+        self::assertSame($prompt, self::paramsOf($sent)['prompt']);
     }
 
     public function testSessionCancelSendsNotification(): void
@@ -281,7 +345,7 @@ final class ClientTest extends TestCase
     public function testCallReturnsScalarResult(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => 'pong',
@@ -295,12 +359,12 @@ final class ClientTest extends TestCase
     public function testCallSkipsServerNotification(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'method' => 'session/update',
             'params' => ['status' => 'running'],
         ]);
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => ['status' => 'ok'],
@@ -314,12 +378,12 @@ final class ClientTest extends TestCase
     public function testCallKeepsUnmatchedResponseForLater(): void
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 2,
             'result' => ['second' => true],
         ]);
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => ['first' => true],
@@ -336,7 +400,7 @@ final class ClientTest extends TestCase
         $transport = new FakeTransport();
         $client = new Client($transport, 1.0);
 
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'error' => [
@@ -347,6 +411,24 @@ final class ClientTest extends TestCase
 
         $this->expectException(JsonRpcException::class);
         $this->expectExceptionMessage('Invalid Request');
+
+        $client->call('initialize');
+    }
+
+    public function testCallThrowsOnInvalidJsonRpcResponse(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = 'not json';
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid JSON-RPC response');
 
         $client->call('initialize');
     }
@@ -371,7 +453,7 @@ final class ClientTest extends TestCase
 
         self::assertCount(1, $transport->sent);
 
-        $sent = json_decode($transport->sent[0], true);
+        $sent = self::decode($transport->sent[0]);
         self::assertArrayNotHasKey('id', $sent);
         self::assertSame('agent/cancel', $sent['method']);
         self::assertSame(['taskId' => 'abc'], $sent['params']);
@@ -431,10 +513,310 @@ final class ClientTest extends TestCase
         }
     }
 
+    public function testNotificationIsDispatchedDuringCall(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'session/update',
+            'params' => ['status' => 'running'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $received = [];
+        $client->onNotification(static function (Notification $notification) use (&$received): void {
+            $received[] = [
+                'method' => $notification->getMethod(),
+                'params' => $notification->getParams(),
+            ];
+        });
+
+        $result = $client->call('initialize');
+
+        self::assertSame(['ok' => true], $result);
+        self::assertSame([
+            [
+                'method' => 'session/update',
+                'params' => ['status' => 'running'],
+            ],
+        ], $received);
+    }
+
+    public function testMethodSpecificListenerOnlyReceivesMatchingNotifications(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'session/update',
+            'params' => ['status' => 'running'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'agent/log',
+            'params' => ['message' => 'hello'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $received = [];
+        $client->on('session/update', static function (Notification $notification) use (&$received): void {
+            $received[] = $notification->getMethod();
+        });
+
+        $client->call('initialize');
+
+        self::assertSame(['session/update'], $received);
+    }
+
+    public function testMultipleListenersAllFire(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'session/update',
+            'params' => ['status' => 'running'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $first = [];
+        $second = [];
+        $client->onNotification(static function (Notification $notification) use (&$first): void {
+            $first[] = $notification->getMethod();
+        });
+        $client->onNotification(static function (Notification $notification) use (&$second): void {
+            $second[] = $notification->getParams()['status'] ?? null;
+        });
+
+        $client->call('initialize');
+
+        self::assertSame(['session/update'], $first);
+        self::assertSame(['running'], $second);
+    }
+
+    public function testNotificationsDoNotInterfereWithResponseMatching(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'session/update',
+            'params' => ['status' => 'running'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => ['second' => true],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['first' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        self::assertSame(['first' => true], $client->call('first'));
+        self::assertSame(['second' => true], $client->call('second'));
+    }
+
+    public function testListenerCanBeRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'method' => 'session/update',
+            'params' => ['status' => 'running'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $received = [];
+        $listener = static function (Notification $notification) use (&$received): void {
+            $received[] = $notification->getMethod();
+        };
+
+        $client->onNotification($listener);
+        $client->offNotification($listener);
+
+        $client->call('initialize');
+
+        self::assertSame([], $received);
+    }
+
+    public function testRegisteredRequestHandlerResponds(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'fs/read_text_file',
+            'params' => ['path' => '/repo/a.php'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->onRequest('fs/read_text_file', static function (array $params): string {
+            $path = $params['path'] ?? '';
+            self::assertIsString($path);
+
+            return 'contents of ' . $path;
+        });
+
+        $result = $client->call('initialize');
+
+        self::assertSame(['ok' => true], $result);
+        self::assertCount(2, $transport->sent);
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame('req-1', $response['id']);
+        self::assertArrayNotHasKey('error', $response);
+        self::assertSame('contents of /repo/a.php', $response['result']);
+    }
+
+    public function testUnknownServerRequestReturnsMethodNotFound(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'fs/unknown',
+            'params' => [],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $result = $client->call('initialize');
+
+        self::assertSame(['ok' => true], $result);
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame('req-1', $response['id']);
+        self::assertArrayHasKey('error', $response);
+        self::assertSame(-32601, self::errorOf($response)['code']);
+    }
+
+    public function testHandlerExceptionReturnsInternalError(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'fs/read_text_file',
+            'params' => ['path' => '/repo/a.php'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->onRequest('fs/read_text_file', static function (): string {
+            throw new RuntimeException('disk failure');
+        });
+
+        $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame('req-1', $response['id']);
+        self::assertArrayHasKey('error', $response);
+        $error = self::errorOf($response);
+        self::assertSame(-32603, $error['code']);
+        self::assertSame('disk failure', $error['message']);
+    }
+
+    public function testServerRequestDoesNotInterfereWithClientResponse(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'fs/read_text_file',
+            'params' => ['path' => '/repo/a.php'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => ['second' => true],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['first' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->onRequest('fs/read_text_file', static function (): string {
+            return 'file contents';
+        });
+
+        self::assertSame(['first' => true], $client->call('first'));
+        self::assertSame(['second' => true], $client->call('second'));
+    }
+
+    public function testRequestHandlerCanBeRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'fs/read_text_file',
+            'params' => ['path' => '/repo/a.php'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $handler = static function (): string {
+            return 'file contents';
+        };
+        $client->onRequest('fs/read_text_file', $handler);
+        $client->offRequest('fs/read_text_file', $handler);
+
+        $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame(-32601, self::errorOf($response)['code']);
+    }
+
     private function transportWithResult(mixed $result): FakeTransport
     {
         $transport = new FakeTransport();
-        $transport->responses[] = json_encode([
+        $transport->responses[] = self::encode([
             'jsonrpc' => '2.0',
             'id' => 1,
             'result' => $result,
@@ -450,6 +832,21 @@ final class ClientTest extends TestCase
     {
         self::assertNotSame([], $transport->sent);
 
-        return json_decode($transport->sent[0], true);
+        return self::decode($transport->sent[0]);
+    }
+
+    /**
+     * @param array<string, mixed> $response
+     *
+     * @return array<string, mixed>
+     */
+    private static function errorOf(array $response): array
+    {
+        self::assertIsArray($response['error']);
+
+        /** @var array<string, mixed> $error */
+        $error = $response['error'];
+
+        return $error;
     }
 }

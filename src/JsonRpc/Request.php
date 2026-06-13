@@ -10,6 +10,9 @@ final class Request
 {
     private static int $idCounter = 0;
 
+    /**
+     * @param array<string, mixed> $params
+     */
     public function __construct(
         private readonly string $method,
         private readonly int|string $id,
@@ -32,6 +35,9 @@ final class Request
         return $this->method;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getParams(): array
     {
         return $this->params;

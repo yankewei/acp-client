@@ -7,12 +7,12 @@
   `session/list`, `session/delete`, `session/prompt`, `session/cancel`,
   `authenticate`, `logout`, `session/set_config_option`, and
   `session/set_mode`.
-- [ ] Add event and notification handling for `session/update` messages,
+- [x] Add event and notification handling for `session/update` messages,
   including prompt progress, tool calls, plans, usage updates, session metadata,
   config updates, and command updates.
-- [ ] Add client-side callback handling for ACP requests from agents, including
+- [x] Add client-side callback handling for ACP requests from agents, including
   filesystem, terminal, and permission request methods.
-- [ ] Introduce PHP value objects or DTOs for common ACP schema structures while
+- [x] Introduce PHP value objects or DTOs for common ACP schema structures while
   keeping array escape hatches for custom agent extensions.
 - [ ] Expand compatibility tests against real ACP agents beyond the current Kimi
   smoke test.

@@ -8,6 +8,9 @@ if ($line === false) {
 }
 
 $request = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+if (!is_array($request)) {
+    exit(0);
+}
 
 echo json_encode([
     'jsonrpc' => '2.0',

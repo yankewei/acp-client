@@ -5,17 +5,18 @@ declare(strict_types=1);
 require dirname(__DIR__) . "/vendor/autoload.php";
 
 use Yankewei\AcpClient\Client;
+use Yankewei\AcpClient\Dto\InitializeResult;
+use Yankewei\AcpClient\Dto\Session;
 use Yankewei\AcpClient\Exception\JsonRpcException;
 use Yankewei\AcpClient\Transport\StdioTransport;
 
-/**
- * @param array<string, mixed> $initialize
- */
-function agentSupports(array $initialize, string $capability): bool
+function agentSupports(InitializeResult $initialize, string $capability): bool
 {
+    $capabilities = $initialize->getAgentCapabilities();
+
     return array_key_exists(
         $capability,
-        $initialize["agentCapabilities"]["sessionCapabilities"] ?? [],
+        $capabilities["sessionCapabilities"] ?? [],
     );
 }
 
@@ -66,14 +67,21 @@ try {
         ],
     ]);
 
-    printJson("initialize", $initialize);
+    printJson("initialize", [
+        "protocolVersion" => $initialize->getProtocolVersion(),
+        "agentCapabilities" => $initialize->getAgentCapabilities(),
+    ]);
 
+    /** @var Session $session */
     $session = runStep("sessionNew()", fn() => $client->sessionNew(getcwd()));
-    if (!is_array($session) || !is_string($session["sessionId"] ?? null)) {
-        throw new RuntimeException("sessionNew() did not return a sessionId");
+    if (!$session instanceof Session) {
+        throw new RuntimeException("sessionNew() did not return a session");
     }
 
-    $sessionId = $session["sessionId"];
+    $sessionId = $session->getSessionId();
+    if ($sessionId === null) {
+        throw new RuntimeException("sessionNew() did not return a sessionId");
+    }
 
     if (agentSupports($initialize, "list")) {
         runStep(
@@ -93,7 +101,7 @@ try {
         echo "\n== sessionResume() ==\nskipped: Kimi did not advertise sessionCapabilities.resume\n";
     }
 
-    if (($initialize["agentCapabilities"]["loadSession"] ?? false) === true) {
+    if (($initialize->getAgentCapabilities()["loadSession"] ?? false) === true) {
         runStep(
             "sessionLoad()",
             fn() => $client->sessionLoad($sessionId, getcwd()),
@@ -103,7 +111,7 @@ try {
     }
 
     $modeConfig = null;
-    foreach ($session["configOptions"] ?? [] as $configOption) {
+    foreach ($session->getConfigOptions() as $configOption) {
         if (($configOption["id"] ?? null) === "mode") {
             $modeConfig = $configOption;
             break;

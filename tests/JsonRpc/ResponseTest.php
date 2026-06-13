@@ -25,8 +25,11 @@ final class ResponseTest extends TestCase
 
         self::assertSame(2, $response->getId());
         self::assertTrue($response->hasError());
-        self::assertSame(-32600, $response->getError()->getCode());
-        self::assertSame('Invalid Request', $response->getError()->getMessage());
+
+        $error = $response->getError();
+        self::assertNotNull($error);
+        self::assertSame(-32600, $error->getCode());
+        self::assertSame('Invalid Request', $error->getMessage());
     }
 
     public function testParseInvalidJsonThrows(): void

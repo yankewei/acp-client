@@ -15,6 +15,8 @@ final class Error
     ) {}
 
     /**
+     * @param array<string, mixed> $data
+     *
      * @throws AcpException
      */
     public static function fromArray(array $data): self

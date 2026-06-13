@@ -34,8 +34,8 @@ $client = new Client($transport);
 
 $client->initialize();
 $session = $client->sessionNew(getcwd());
-$turn = $client->sessionPrompt($session['sessionId'], 'Refactor the login flow');
-$client->sessionCancel($session['sessionId']);
+$turn = $client->sessionPrompt($session->getSessionId(), 'Refactor the login flow');
+$client->sessionCancel($session->getSessionId());
 $transport->close();
 ```
 
@@ -56,12 +56,11 @@ Typed convenience methods are available for stable ACP v1 calls:
 - `setConfigOption($sessionId, $configId, $value)`
 - `setMode($sessionId, $modeId)` for agents that still expose legacy modes
 
-The lower-level `Client::call()` and `Client::notify()` methods remain available
-for agent-specific extensions and ACP methods not yet wrapped by this library.
-
-`Client::call()` returns the raw JSON-RPC `result` value, so it may be an array,
-string, number, boolean, or `null` depending on the ACP method. `initialize()`
-expects an object/array response and throws if the server returns another type.
+High-level methods return typed value objects (DTOs) such as `InitializeResult`,
+`Session`, `SessionListResult`, and `PromptResult`. The lower-level
+`Client::call()` and `Client::notify()` methods remain available for
+agent-specific extensions and ACP methods not yet wrapped by this library, and
+still return raw arrays/mixed values as the escape hatch.
 
 ## Kimi ACP smoke test
 
@@ -75,6 +74,54 @@ The script starts `kimi acp`, initializes the connection, creates a session for
 the current project directory, prints both responses, and then closes the
 transport.
 
+## Notifications
+
+ACP agents can push server-initiated JSON-RPC notifications while a request is
+in flight (for example, `session/update` with prompt progress, tool calls, or
+usage updates). Register listeners to receive them:
+
+```php
+use Yankewei\AcpClient\Event\Notification;
+
+$client->onNotification(function (Notification $notification): void {
+    if ($notification->is('session/update')) {
+        $params = $notification->getParams();
+        // handle progress, tool calls, usage, etc.
+    }
+});
+
+// Or listen to a specific method only:
+$client->on('session/update', function (Notification $notification): void {
+    // ...
+});
+```
+
+Listeners run synchronously on the same thread when a notification arrives, so
+they keep the existing blocking API simple. Use `offNotification()` or `off()`
+to remove a listener when you no longer need it.
+
+## Handling agent requests
+
+ACP agents can also send JSON-RPC requests *to* the client, for example to read
+a file, run a terminal command, or ask for permission. Register handlers to
+respond to them:
+
+```php
+$client->onRequest('fs/read_text_file', function (array $params): string {
+    return file_get_contents($params['path']);
+});
+
+$client->onRequest('terminal/run', function (array $params): array {
+    // run command, return { output, exitCode }
+    return ['output' => '', 'exitCode' => 0];
+});
+```
+
+The handler return value is sent back as the JSON-RPC `result`. If a handler
+throws, the client replies with a JSON-RPC internal error (`-32603`). If no
+handler is registered for a method, it replies with method not found
+(`-32601`). Use `offRequest()` to remove a handler.
+
 ## Errors
 
 - `TransportException`: process start, read/write, timeout, or closed transport failures
@@ -86,6 +133,7 @@ transport.
 ```bash
 composer install
 vendor/bin/phpunit
+vendor/bin/phpstan analyse
 ```
 
 ## License

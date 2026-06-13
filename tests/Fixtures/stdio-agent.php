@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 while (($line = fgets(STDIN)) !== false) {
     $request = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+    if (!is_array($request)) {
+        continue;
+    }
 
     if (!array_key_exists('id', $request)) {
         continue;

@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient;
 
 use JsonException;
+use Throwable;
+use Yankewei\AcpClient\Dto\InitializeResult;
+use Yankewei\AcpClient\Dto\PromptResult;
+use Yankewei\AcpClient\Dto\Session;
+use Yankewei\AcpClient\Dto\SessionListResult;
+use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Exception\JsonRpcException;
 use Yankewei\AcpClient\Exception\TransportException;
@@ -17,6 +23,15 @@ final class Client
     /** @var array<string, Response> */
     private array $pendingResponses = [];
 
+    /** @var array<int, callable(Notification): void> */
+    private array $notificationListeners = [];
+
+    /** @var array<string, array<int, callable(Notification): void>> */
+    private array $methodListeners = [];
+
+    /** @var array<string, array<int, callable(array<string, mixed>): mixed>> */
+    private array $requestHandlers = [];
+
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly float $defaultTimeout = 30.0,
@@ -24,18 +39,20 @@ final class Client
     }
 
     /**
+     * @param array<string, mixed> $params
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
      */
-    public function initialize(array $params = []): array
+    public function initialize(array $params = []): InitializeResult
     {
         $result = $this->call(
             'initialize',
             array_replace_recursive($this->defaultInitializeParams(), $params),
         );
 
-        return $this->expectArrayResult($result, 'initialize');
+        return InitializeResult::fromArray($this->expectArrayResult($result, 'initialize'));
     }
 
     /**
@@ -68,6 +85,8 @@ final class Client
     }
 
     /**
+     * @return array<string, mixed>
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
@@ -81,6 +100,8 @@ final class Client
     }
 
     /**
+     * @return array<string, mixed>
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
@@ -103,14 +124,16 @@ final class Client
         array $mcpServers = [],
         array $additionalDirectories = [],
         ?float $timeout = null,
-    ): array {
-        return $this->expectArrayResult(
-            $this->call(
+    ): Session {
+        return Session::fromArray(
+            $this->expectArrayResult(
+                $this->call(
+                    'session/new',
+                    $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
+                    $timeout,
+                ),
                 'session/new',
-                $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
-                $timeout,
             ),
-            'session/new',
         );
     }
 
@@ -150,14 +173,16 @@ final class Client
         array $mcpServers = [],
         array $additionalDirectories = [],
         ?float $timeout = null,
-    ): array {
-        return $this->expectArrayResult(
-            $this->call(
+    ): Session {
+        return Session::fromArray(
+            $this->expectArrayResult(
+                $this->call(
+                    'session/resume',
+                    ['sessionId' => $sessionId] + $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
+                    $timeout,
+                ),
                 'session/resume',
-                ['sessionId' => $sessionId] + $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
-                $timeout,
             ),
-            'session/resume',
         );
     }
 
@@ -166,11 +191,13 @@ final class Client
      * @throws JsonException
      * @throws TransportException
      */
-    public function sessionClose(string $sessionId, ?float $timeout = null): array
+    public function sessionClose(string $sessionId, ?float $timeout = null): Session
     {
-        return $this->expectArrayResult(
-            $this->call('session/close', ['sessionId' => $sessionId], $timeout),
-            'session/close',
+        return Session::fromArray(
+            $this->expectArrayResult(
+                $this->call('session/close', ['sessionId' => $sessionId], $timeout),
+                'session/close',
+            ),
         );
     }
 
@@ -179,8 +206,9 @@ final class Client
      * @throws JsonException
      * @throws TransportException
      */
-    public function sessionList(?string $cwd = null, ?string $cursor = null, ?float $timeout = null): array
+    public function sessionList(?string $cwd = null, ?string $cursor = null, ?float $timeout = null): SessionListResult
     {
+        /** @var array<string, mixed> $params */
         $params = [];
 
         if ($cwd !== null) {
@@ -191,13 +219,17 @@ final class Client
             $params['cursor'] = $cursor;
         }
 
-        return $this->expectArrayResult(
-            $this->call('session/list', $params, $timeout),
-            'session/list',
+        return SessionListResult::fromArray(
+            $this->expectArrayResult(
+                $this->call('session/list', $params, $timeout),
+                'session/list',
+            ),
         );
     }
 
     /**
+     * @return array<string, mixed>
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
@@ -217,18 +249,20 @@ final class Client
      * @throws JsonException
      * @throws TransportException
      */
-    public function sessionPrompt(string $sessionId, string|array $prompt, ?float $timeout = null): array
+    public function sessionPrompt(string $sessionId, string|array $prompt, ?float $timeout = null): PromptResult
     {
-        return $this->expectArrayResult(
-            $this->call(
+        return PromptResult::fromArray(
+            $this->expectArrayResult(
+                $this->call(
+                    'session/prompt',
+                    [
+                        'sessionId' => $sessionId,
+                        'prompt' => $this->normalizePrompt($prompt),
+                    ],
+                    $timeout,
+                ),
                 'session/prompt',
-                [
-                    'sessionId' => $sessionId,
-                    'prompt' => $this->normalizePrompt($prompt),
-                ],
-                $timeout,
             ),
-            'session/prompt',
         );
     }
 
@@ -242,6 +276,8 @@ final class Client
     }
 
     /**
+     * @return array<string, mixed>
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
@@ -284,6 +320,8 @@ final class Client
     }
 
     /**
+     * @param array<string, mixed> $params
+     *
      * @throws AcpException
      * @throws JsonException
      * @throws TransportException
@@ -303,6 +341,10 @@ final class Client
 
         if ($response->hasError()) {
             $error = $response->getError();
+            if ($error === null) {
+                throw new AcpException('Invalid JSON-RPC response: error is missing');
+            }
+
             throw new JsonRpcException($error->getCode(), $error->getMessage(), $error->getData());
         }
 
@@ -310,6 +352,8 @@ final class Client
     }
 
     /**
+     * @param array<string, mixed> $params
+     *
      * @throws JsonException
      * @throws TransportException
      */
@@ -324,6 +368,77 @@ final class Client
         ];
 
         $this->transport->send(json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @param callable(Notification): void $listener
+     */
+    public function onNotification(callable $listener): void
+    {
+        $this->notificationListeners[] = $listener;
+    }
+
+    /**
+     * @param callable(Notification): void $listener
+     */
+    public function offNotification(callable $listener): void
+    {
+        $this->notificationListeners = array_values(
+            array_filter(
+                $this->notificationListeners,
+                static fn (callable $existing): bool => $existing !== $listener,
+            ),
+        );
+    }
+
+    /**
+     * @param callable(Notification): void $listener
+     */
+    public function on(string $method, callable $listener): void
+    {
+        $this->methodListeners[$method][] = $listener;
+    }
+
+    /**
+     * @param callable(Notification): void $listener
+     */
+    public function off(string $method, callable $listener): void
+    {
+        if (!array_key_exists($method, $this->methodListeners)) {
+            return;
+        }
+
+        $this->methodListeners[$method] = array_values(
+            array_filter(
+                $this->methodListeners[$method],
+                static fn (callable $existing): bool => $existing !== $listener,
+            ),
+        );
+    }
+
+    /**
+     * @param callable(array<string, mixed>): mixed $handler
+     */
+    public function onRequest(string $method, callable $handler): void
+    {
+        $this->requestHandlers[$method][] = $handler;
+    }
+
+    /**
+     * @param callable(array<string, mixed>): mixed $handler
+     */
+    public function offRequest(string $method, callable $handler): void
+    {
+        if (!array_key_exists($method, $this->requestHandlers)) {
+            return;
+        }
+
+        $this->requestHandlers[$method] = array_values(
+            array_filter(
+                $this->requestHandlers[$method],
+                static fn (callable $existing): bool => $existing !== $handler,
+            ),
+        );
     }
 
     /**
@@ -376,6 +491,7 @@ final class Client
             );
         }
 
+        /** @var array<string, mixed> $result */
         return $result;
     }
 
@@ -408,8 +524,18 @@ final class Client
                 return null;
             }
 
-            if ($this->isJsonRpcNotification($line)) {
-                continue;
+            $data = $this->parseJsonLine($line);
+            if ($data !== null) {
+                $notification = $this->toNotification($data);
+                if ($notification !== null) {
+                    $this->dispatch($notification);
+                    continue;
+                }
+
+                if ($this->isServerRequest($data)) {
+                    $this->handleServerRequest($data);
+                    continue;
+                }
             }
 
             $response = Response::fromJson($line);
@@ -430,18 +556,143 @@ final class Client
         return gettype($id) . ':' . $id;
     }
 
-    private function isJsonRpcNotification(string $message): bool
+    private function dispatch(Notification $notification): void
+    {
+        foreach ($this->notificationListeners as $listener) {
+            $listener($notification);
+        }
+
+        foreach ($this->methodListeners[$notification->getMethod()] ?? [] as $listener) {
+            $listener($notification);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function parseJsonLine(string $message): ?array
     {
         try {
             $data = json_decode($message, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException) {
+            return null;
+        }
+
+        if (!is_array($data) || array_is_list($data)) {
+            return null;
+        }
+
+        if (($data['jsonrpc'] ?? null) !== '2.0') {
+            return null;
+        }
+
+        /** @var array<string, mixed> $data */
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function toNotification(array $data): ?Notification
+    {
+        if (array_key_exists('id', $data)) {
+            return null;
+        }
+
+        $method = $data['method'] ?? null;
+        if (!is_string($method)) {
+            return null;
+        }
+
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        /** @var array<string, mixed> $params */
+        return new Notification($method, $params);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function isServerRequest(array $data): bool
+    {
+        if (!array_key_exists('id', $data)) {
             return false;
         }
 
-        return is_array($data)
-            && !array_is_list($data)
-            && ($data['jsonrpc'] ?? null) === '2.0'
-            && is_string($data['method'] ?? null)
-            && !array_key_exists('id', $data);
+        $id = $data['id'];
+        if (!is_int($id) && !is_string($id)) {
+            return false;
+        }
+
+        $method = $data['method'] ?? null;
+
+        return is_string($method);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleServerRequest(array $data): void
+    {
+        $id = $data['id'];
+        if (!is_int($id) && !is_string($id)) {
+            return;
+        }
+
+        $method = $data['method'];
+        if (!is_string($method)) {
+            $this->sendError($id, -32600, 'Invalid Request');
+            return;
+        }
+
+        $handlers = $this->requestHandlers[$method] ?? [];
+        if ($handlers === []) {
+            $this->sendError($id, -32601, "Method not found: {$method}");
+            return;
+        }
+
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            $result = $handlers[0]($params);
+            $this->sendResponse($id, $result);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32603, $e->getMessage());
+        }
+    }
+
+    private function sendResponse(int|string $id, mixed $result): void
+    {
+        $payload = [
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'result' => $result,
+        ];
+
+        $this->transport->send(json_encode($payload, JSON_THROW_ON_ERROR));
+    }
+
+    private function sendError(int|string $id, int $code, string $message, mixed $data = null): void
+    {
+        $payload = [
+            'jsonrpc' => '2.0',
+            'id' => $id,
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ];
+
+        if ($data !== null) {
+            $payload['error']['data'] = $data;
+        }
+
+        $this->transport->send(json_encode($payload, JSON_THROW_ON_ERROR));
     }
 }

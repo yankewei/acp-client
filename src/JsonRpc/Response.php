@@ -64,7 +64,9 @@ final class Response
             if (array_is_list($data['error'])) {
                 throw new AcpException('Invalid JSON-RPC response: error must be an object');
             }
-            $response->error = Error::fromArray($data['error']);
+            /** @var array<string, mixed> $errorData */
+            $errorData = $data['error'];
+            $response->error = Error::fromArray($errorData);
         } else {
             $response->result = $data['result'];
         }
