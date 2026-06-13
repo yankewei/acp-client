@@ -98,16 +98,13 @@ final class Assert
      *
      * @throws AcpException
      */
-    public static function optionalStringInEnum(
-        ?string $value,
-        array $allowed,
-        string $message,
-    ): ?string {
+    public static function optionalStringInEnum(mixed $value, array $allowed, string $message): ?string
+    {
         if ($value === null) {
             return null;
         }
 
-        if (!in_array($value, $allowed, true)) {
+        if (!is_string($value) || !in_array($value, $allowed, true)) {
             throw new AcpException($message);
         }
 
