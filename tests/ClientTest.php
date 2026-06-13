@@ -725,6 +725,92 @@ final class ClientTest extends TestCase
         self::assertSame(-32601, self::errorOf($response)['code']);
     }
 
+    public function testAnyRequestHandlerRespondsToUnknownServerRequest(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'permission/request',
+            'params' => ['question' => 'Allow edit?'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->onAnyRequest(static function (string $method, array $params): array {
+            return [
+                'method' => $method,
+                'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
+            ];
+        });
+
+        self::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame('req-1', $response['id']);
+        self::assertArrayNotHasKey('error', $response);
+        self::assertSame(
+            ['method' => 'permission/request', 'answer' => 'approved'],
+            $response['result'],
+        );
+    }
+
+    public function testMethodRequestHandlerTakesPrecedenceOverAnyRequestHandler(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'permission/request',
+            'params' => ['question' => 'Allow edit?'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->onAnyRequest(static fn (string $method, array $params): array => ['answer' => 'fallback']);
+        $client->onRequest('permission/request', static fn (array $params): array => ['answer' => 'specific']);
+
+        $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame(['answer' => 'specific'], $response['result']);
+    }
+
+    public function testAnyRequestHandlerCanBeRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'permission/request',
+            'params' => [],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0);
+
+        $handler = static fn (string $method, array $params): array => ['answer' => 'fallback'];
+        $client->onAnyRequest($handler);
+        $client->offAnyRequest($handler);
+
+        $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        self::assertSame(-32601, self::errorOf($response)['code']);
+    }
+
     public function testHandlerExceptionReturnsInternalError(): void
     {
         $transport = new FakeTransport();

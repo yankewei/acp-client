@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Dto;
 
 use Yankewei\AcpClient\Exception\AcpException;
+use Yankewei\AcpClient\Util\Assert;
 
 final class DtoHelper
 {
@@ -13,11 +14,7 @@ final class DtoHelper
      */
     public static function requireString(array $data, string $key): string
     {
-        if (!array_key_exists($key, $data) || !is_string($data[$key])) {
-            throw new AcpException("Missing or invalid required field: {$key}");
-        }
-
-        return $data[$key];
+        return Assert::requiredString($data, $key, "Missing or invalid required field: {$key}");
     }
 
     /**
@@ -26,14 +23,7 @@ final class DtoHelper
      */
     public static function requireArray(array $data, string $key): array
     {
-        if (!array_key_exists($key, $data) || !is_array($data[$key]) || array_is_list($data[$key])) {
-            throw new AcpException("Missing or invalid required field: {$key}");
-        }
-
-        /** @var array<string, mixed> $value */
-        $value = $data[$key];
-
-        return $value;
+        return Assert::requiredObjectField($data, $key, "Missing or invalid required field: {$key}");
     }
 
     /**
@@ -41,15 +31,7 @@ final class DtoHelper
      */
     public static function optionalString(array $data, string $key): ?string
     {
-        if (!array_key_exists($key, $data)) {
-            return null;
-        }
-
-        if (!is_string($data[$key])) {
-            throw new AcpException("Invalid field type: {$key}");
-        }
-
-        return $data[$key];
+        return Assert::optionalString($data, $key, "Invalid field type: {$key}");
     }
 
     /**
@@ -58,17 +40,6 @@ final class DtoHelper
      */
     public static function optionalArray(array $data, string $key): ?array
     {
-        if (!array_key_exists($key, $data)) {
-            return null;
-        }
-
-        if (!is_array($data[$key]) || array_is_list($data[$key])) {
-            throw new AcpException("Invalid field type: {$key}");
-        }
-
-        /** @var array<string, mixed> $value */
-        $value = $data[$key];
-
-        return $value;
+        return Assert::optionalObjectField($data, $key, "Invalid field type: {$key}");
     }
 }

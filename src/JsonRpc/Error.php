@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\JsonRpc;
 
 use Yankewei\AcpClient\Exception\AcpException;
+use Yankewei\AcpClient\Util\Assert;
 
 final class Error
 {
@@ -21,22 +22,18 @@ final class Error
      */
     public static function fromArray(array $data): self
     {
-        if (!array_key_exists("code", $data) || !is_int($data["code"])) {
-            throw new AcpException(
-                "Invalid JSON-RPC response: error.code must be an integer",
-            );
-        }
+        $code = Assert::requiredInt(
+            $data,
+            "code",
+            "Invalid JSON-RPC response: error.code must be an integer",
+        );
+        $message = Assert::requiredString(
+            $data,
+            "message",
+            "Invalid JSON-RPC response: error.message must be a string",
+        );
 
-        if (
-            !array_key_exists("message", $data) ||
-            !is_string($data["message"])
-        ) {
-            throw new AcpException(
-                "Invalid JSON-RPC response: error.message must be a string",
-            );
-        }
-
-        return new self($data["code"], $data["message"], $data["data"] ?? null);
+        return new self($code, $message, $data["data"] ?? null);
     }
 
     public function getCode(): int

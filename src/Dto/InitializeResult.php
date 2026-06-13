@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Dto;
 
 use Yankewei\AcpClient\Exception\AcpException;
+use Yankewei\AcpClient\Util\Assert;
 
 final class InitializeResult
 {
@@ -24,17 +25,17 @@ final class InitializeResult
      */
     public static function fromArray(array $data): self
     {
-        $protocolVersion = $data['protocolVersion'] ?? null;
-        if ($protocolVersion !== null && !is_int($protocolVersion)) {
-            throw new AcpException('Invalid initialize result: protocolVersion must be an integer');
-        }
+        $protocolVersion = Assert::optionalInt(
+            $data['protocolVersion'] ?? null,
+            'Invalid initialize result: protocolVersion must be an integer',
+        );
 
         $agentCapabilities = $data['agentCapabilities'] ?? [];
-        if (!is_array($agentCapabilities) || ($agentCapabilities !== [] && array_is_list($agentCapabilities))) {
-            throw new AcpException('Invalid initialize result: agentCapabilities must be an object');
-        }
+        $agentCapabilities = Assert::object(
+            $agentCapabilities,
+            'Invalid initialize result: agentCapabilities must be an object',
+        );
 
-        /** @var array<string, mixed> $agentCapabilities */
         return new self($protocolVersion, $agentCapabilities);
     }
 

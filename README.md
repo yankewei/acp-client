@@ -71,8 +71,8 @@ php examples/kimi-smoke.php
 ```
 
 The script starts `kimi acp`, initializes the connection, creates a session for
-the current project directory, prints both responses, and then closes the
-transport.
+the current project directory, exercises supported session methods, sends a
+prompt, and then closes the transport.
 
 ## Notifications
 
@@ -103,8 +103,9 @@ to remove a listener when you no longer need it.
 ## Handling agent requests
 
 ACP agents can also send JSON-RPC requests *to* the client, for example to read
-a file, run a terminal command, or ask for permission. Register handlers to
-respond to them:
+a file, run a terminal command, ask the user a question, or ask for permission.
+Unlike notifications, these messages have an `id` and require the client to send
+a JSON-RPC response. Register handlers to respond to them:
 
 ```php
 $client->onRequest('fs/read_text_file', function (array $params): string {
@@ -122,6 +123,27 @@ throws, the client replies with a JSON-RPC internal error (`-32603`). If no
 handler is registered for a method, it replies with method not found
 (`-32601`). Use `offRequest()` to remove a handler.
 
+Some agents use implementation-specific method names for ask-user or permission
+requests. Use `onAnyRequest()` as a fallback when you want to inspect or handle
+unknown agent requests:
+
+```php
+$client->onAnyRequest(function (string $method, array $params): mixed {
+    echo "\nAgent request: {$method}\n";
+    echo json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+
+    echo "Allow? [y/N] ";
+    $answer = strtolower(trim((string) fgets(STDIN)));
+
+    return [
+        'outcome' => $answer === 'y' ? 'approved' : 'denied',
+    ];
+});
+```
+
+Method-specific handlers registered with `onRequest()` take precedence over the
+fallback handler. Use `offAnyRequest()` to remove a fallback handler.
+
 ## Errors
 
 - `TransportException`: process start, read/write, timeout, or closed transport failures
@@ -131,9 +153,9 @@ handler is registered for a method, it replies with method not found
 ## Development
 
 ```bash
-composer install
+composer update
 vendor/bin/phpunit
-vendor/bin/phpstan analyse
+vendor/bin/phpstan analyse -c phpstan.neon.dist
 ```
 
 ## License

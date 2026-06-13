@@ -32,6 +32,9 @@ final class Client
     /** @var array<string, array<int, callable(array<string, mixed>): mixed>> */
     private array $requestHandlers = [];
 
+    /** @var (callable(string, array<string, mixed>): mixed)|null */
+    private $anyRequestHandler = null;
+
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly float $defaultTimeout = 30.0,
@@ -442,6 +445,32 @@ final class Client
     }
 
     /**
+     * Register a fallback handler for agent requests that do not have a
+     * method-specific handler. This is useful for agent-specific permission or
+     * ask-user methods whose exact names are not known ahead of time.
+     *
+     * Setting a new handler replaces any previously registered fallback handler.
+     *
+     * @param callable(string, array<string, mixed>): mixed $handler
+     */
+    public function onAnyRequest(callable $handler): void
+    {
+        $this->anyRequestHandler = $handler;
+    }
+
+    /**
+     * Remove the fallback handler only if it is currently registered.
+     *
+     * @param callable(string, array<string, mixed>): mixed $handler
+     */
+    public function offAnyRequest(callable $handler): void
+    {
+        if ($this->anyRequestHandler === $handler) {
+            $this->anyRequestHandler = null;
+        }
+    }
+
+    /**
      * @param array<int, array<string, mixed>> $mcpServers
      * @param string[] $additionalDirectories
      * @return array{cwd: string, mcpServers: array<int, array<string, mixed>>, additionalDirectories?: string[]}
@@ -648,8 +677,10 @@ final class Client
             return;
         }
 
-        $handlers = $this->requestHandlers[$method] ?? [];
-        if ($handlers === []) {
+        $methodHandler = $this->requestHandlers[$method][0] ?? null;
+        $anyHandler = $this->anyRequestHandler;
+
+        if ($methodHandler === null && $anyHandler === null) {
             $this->sendError($id, -32601, "Method not found: {$method}");
             return;
         }
@@ -660,7 +691,9 @@ final class Client
         }
 
         try {
-            $result = $handlers[0]($params);
+            $result = $methodHandler !== null
+                ? $methodHandler($params)
+                : $anyHandler($method, $params);
             $this->sendResponse($id, $result);
         } catch (Throwable $e) {
             $this->sendError($id, -32603, $e->getMessage());
