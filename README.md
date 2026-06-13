@@ -166,6 +166,7 @@ You can also use the typed `SessionUpdateMapper` to dispatch to concrete
 update objects:
 
 ```php
+use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Event\Update\SessionUpdateMapper;
 use Yankewei\AcpClient\Event\Update\AgentMessageChunkUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallUpdate;
