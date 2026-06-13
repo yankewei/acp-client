@@ -134,4 +134,38 @@ final class UsageUpdateTest extends TestCase
             ],
         ]);
     }
+
+    public function testRejectsWrongDiscriminator(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid usage_update update: sessionUpdate must be usage_update');
+
+        UsageUpdate::fromUpdate('sess_1', ['sessionUpdate' => 'tool_call']);
+    }
+
+    public function testRejectsMissingCostAmount(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid usage_update update: cost.amount must be a number');
+
+        UsageUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'usage_update',
+            'used' => 100,
+            'size' => 200,
+            'cost' => ['currency' => 'USD'],
+        ]);
+    }
+
+    public function testRejectsMissingCostCurrency(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid usage_update update: cost.currency must be a string');
+
+        UsageUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'usage_update',
+            'used' => 100,
+            'size' => 200,
+            'cost' => ['amount' => 0.05],
+        ]);
+    }
 }
