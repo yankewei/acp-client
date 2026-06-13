@@ -92,18 +92,7 @@ final class InitializeResult
 
     public function supportsLogout(): bool
     {
-        $auth = $this->agentCapabilities['auth'] ?? null;
-        if (!is_array($auth) || array_is_list($auth)) {
-            return false;
-        }
-
-        if (!array_key_exists('logout', $auth)) {
-            return false;
-        }
-
-        $logout = $auth['logout'];
-
-        return is_array($logout) && ($logout === [] || !array_is_list($logout));
+        return $this->hasObjectCapability('auth', 'logout');
     }
 
     public function supportsLoadSession(): bool

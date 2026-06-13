@@ -45,6 +45,10 @@ final class AuthMethod
             'Invalid auth method: type must be a string',
         ) ?? 'agent';
 
+        if ($type !== 'agent') {
+            throw new AcpException('Invalid auth method: type must be agent');
+        }
+
         return new self($id, $name, $description, $type);
     }
 

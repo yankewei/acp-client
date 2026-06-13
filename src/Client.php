@@ -40,7 +40,7 @@ final class Client
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly float $defaultTimeout = 30.0,
-        private readonly bool $strictProtocol = false,
+        private readonly bool $strictProtocol = true,
     ) {
     }
 
@@ -102,6 +102,15 @@ final class Client
      */
     public function authenticate(string $methodId, ?float $timeout = null): array
     {
+        if ($this->strictProtocol) {
+            $initializeResult = $this->requireInitialized('authenticate');
+            if ($initializeResult->getAuthMethod($methodId) === null) {
+                throw new AcpException(
+                    "Cannot call authenticate: agent did not advertise auth method {$methodId}",
+                );
+            }
+        }
+
         return $this->expectArrayResult(
             $this->call('authenticate', ['methodId' => $methodId], $timeout),
             'authenticate',
@@ -171,8 +180,7 @@ final class Client
         ?float $timeout = null,
     ): mixed {
         if ($this->strictProtocol) {
-            $initializeResult = $this->requireInitialized('session/load');
-            if (!$initializeResult->supportsLoadSession()) {
+            if (!$this->requireInitialized('session/load')->supportsLoadSession()) {
                 throw new AcpException('Cannot call session/load: agent did not advertise loadSession');
             }
         }
@@ -202,8 +210,7 @@ final class Client
         ?float $timeout = null,
     ): Session {
         if ($this->strictProtocol) {
-            $initializeResult = $this->requireInitialized('session/resume');
-            if (!$initializeResult->supportsSessionResume()) {
+            if (!$this->requireInitialized('session/resume')->supportsSessionResume()) {
                 throw new AcpException('Cannot call session/resume: agent did not advertise sessionCapabilities.resume');
             }
         }
@@ -624,9 +631,7 @@ final class Client
 
         $this->requireStringListField($method, "mcpServers[{$index}].args", $server, 'args');
 
-        if (array_key_exists('env', $server)) {
-            $this->validateNameValueList($method, "mcpServers[{$index}].env", $server['env']);
-        }
+        $this->validateNameValueList($method, "mcpServers[{$index}].env", $server['env'] ?? null);
     }
 
     /**

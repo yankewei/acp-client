@@ -86,13 +86,13 @@ If an agent requires authentication before creating a session, it can return a
 JSON-RPC error with code `-32000`. `JsonRpcException::isAuthenticationRequired()`
 is available for that branch.
 
-### Strict protocol mode
+### Protocol strictness
 
-By default the client stays permissive and acts as a thin JSON-RPC wrapper. For
-ACP clients that should enforce Session Setup requirements, enable strict mode:
+By default the client enforces ACP Session Setup requirements that can be
+validated locally:
 
 ```php
-$client = new Client($transport, strictProtocol: true);
+$client = new Client($transport);
 
 $initialize = $client->initialize();
 
@@ -112,6 +112,13 @@ locally:
 - stdio, HTTP, and SSE MCP server configurations must match the protocol shape
 - HTTP and SSE MCP servers require `mcpCapabilities.http` or
   `mcpCapabilities.sse`
+
+If you need a permissive thin JSON-RPC wrapper for agent-specific extensions or
+compatibility testing, disable strict mode explicitly:
+
+```php
+$client = new Client($transport, strictProtocol: false);
+```
 
 ## Kimi ACP smoke test
 

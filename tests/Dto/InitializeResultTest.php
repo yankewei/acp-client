@@ -85,6 +85,22 @@ final class InitializeResultTest extends TestCase
         InitializeResult::fromArray(['authMethods' => [['id' => 'login']]]);
     }
 
+    public function testFromArrayRejectsInvalidAuthMethodType(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid auth method: type must be agent');
+
+        InitializeResult::fromArray([
+            'authMethods' => [
+                [
+                    'id' => 'login',
+                    'name' => 'Login',
+                    'type' => '',
+                ],
+            ],
+        ]);
+    }
+
     public function testSupportsLogoutRequiresObjectCapability(): void
     {
         self::assertFalse(InitializeResult::fromArray([
