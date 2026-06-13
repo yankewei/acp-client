@@ -122,6 +122,7 @@ final class InitializeResultTest extends TestCase
             'agentCapabilities' => [
                 'loadSession' => true,
                 'sessionCapabilities' => [
+                    'list' => [],
                     'resume' => [],
                     'close' => [],
                     'additionalDirectories' => [],
@@ -134,6 +135,7 @@ final class InitializeResultTest extends TestCase
         ]);
 
         self::assertTrue($result->supportsLoadSession());
+        self::assertTrue($result->supportsSessionList());
         self::assertTrue($result->supportsSessionResume());
         self::assertTrue($result->supportsSessionClose());
         self::assertTrue($result->supportsAdditionalDirectories());

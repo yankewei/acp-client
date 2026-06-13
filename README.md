@@ -105,8 +105,8 @@ Strict mode enforces the ACP Session Setup rules that the client can validate
 locally:
 
 - `initialize()` must run before session lifecycle calls
-- `session/load`, `session/resume`, `session/close`, and `additionalDirectories`
-  require the matching advertised agent capability
+- `session/list`, `session/load`, `session/resume`, `session/close`, and
+  `additionalDirectories` require the matching advertised agent capability
 - `cwd`, `additionalDirectories`, and stdio MCP `command` values must be
   absolute paths
 - stdio, HTTP, and SSE MCP server configurations must match the protocol shape

@@ -110,6 +110,11 @@ final class InitializeResult
         return $this->hasObjectCapability('sessionCapabilities', 'close');
     }
 
+    public function supportsSessionList(): bool
+    {
+        return $this->hasObjectCapability('sessionCapabilities', 'list');
+    }
+
     public function supportsAdditionalDirectories(): bool
     {
         return $this->hasObjectCapability('sessionCapabilities', 'additionalDirectories');

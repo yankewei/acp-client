@@ -509,6 +509,80 @@ final class ClientTest extends TestCase
         self::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
     }
 
+    public function testStrictProtocolRequiresInitializeBeforeSessionList(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Cannot call session/list before initialize() in strict protocol mode');
+
+        $client->sessionList();
+    }
+
+    public function testStrictProtocolRejectsSessionListWithoutCapability(): void
+    {
+        $transport = $this->initializedStrictTransport([]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Cannot call session/list: agent did not advertise sessionCapabilities.list');
+
+        $client->sessionList();
+    }
+
+    public function testStrictProtocolRejectsRelativeSessionListCwd(): void
+    {
+        $transport = $this->initializedStrictTransport([
+            'sessionCapabilities' => ['list' => []],
+        ]);
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/list params: cwd must be an absolute path');
+
+        $client->sessionList('repo');
+    }
+
+    public function testStrictProtocolAllowsAdvertisedSessionList(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [
+                    'sessionCapabilities' => ['list' => []],
+                ],
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 2,
+            'result' => [
+                'sessions' => [
+                    [
+                        'sessionId' => 'sess_1',
+                        'cwd' => '/repo',
+                        'title' => 'List support',
+                    ],
+                ],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0);
+        $client->initialize();
+        $result = $client->sessionList('/repo', 'cursor');
+
+        self::assertSame('sess_1', $result->getSessionInfos()[0]->getSessionId());
+
+        $sent = self::decode($transport->sent[1]);
+        self::assertSame('session/list', $sent['method']);
+        self::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
+    }
+
     public function testSessionDeleteCallsAcpMethod(): void
     {
         $transport = $this->transportWithResult([]);

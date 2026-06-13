@@ -10,10 +10,10 @@ use Yankewei\AcpClient\Util\Assert;
 final class SessionListResult
 {
     /**
-     * @param array<int, array<string, mixed>> $sessions
+     * @param SessionInfo[] $sessionInfos
      */
     public function __construct(
-        private readonly array $sessions,
+        private readonly array $sessionInfos,
         private readonly ?string $nextCursor,
     ) {
     }
@@ -25,22 +25,28 @@ final class SessionListResult
      */
     public static function fromArray(array $data): self
     {
+        if (!array_key_exists('sessions', $data)) {
+            throw new AcpException('Invalid session/list result: sessions is required');
+        }
+
         $sessions = Assert::list(
-            $data['sessions'] ?? [],
+            $data['sessions'],
             'Invalid session/list result: sessions must be an array',
         );
 
-        foreach ($sessions as $index => $session) {
-            $sessions[$index] = Assert::object(
-                $session,
-                'Invalid session/list result: each session must be an object',
+        $nextCursor = DtoHelper::optionalString($data, 'nextCursor');
+
+        $sessionInfos = [];
+        foreach ($sessions as $session) {
+            $sessionInfos[] = SessionInfo::fromArray(
+                Assert::object(
+                    $session,
+                    'Invalid session/list result: each session must be an object',
+                ),
             );
         }
 
-        $nextCursor = DtoHelper::optionalString($data, 'nextCursor');
-
-        /** @var array<int, array<string, mixed>> $sessions */
-        return new self($sessions, $nextCursor);
+        return new self($sessionInfos, $nextCursor);
     }
 
     /**
@@ -48,7 +54,18 @@ final class SessionListResult
      */
     public function getSessions(): array
     {
-        return $this->sessions;
+        return array_map(
+            static fn (SessionInfo $sessionInfo): array => $sessionInfo->toArray(),
+            $this->sessionInfos,
+        );
+    }
+
+    /**
+     * @return SessionInfo[]
+     */
+    public function getSessionInfos(): array
+    {
+        return $this->sessionInfos;
     }
 
     public function getNextCursor(): ?string

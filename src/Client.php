@@ -17,6 +17,7 @@ use Yankewei\AcpClient\Exception\TransportException;
 use Yankewei\AcpClient\JsonRpc\Request;
 use Yankewei\AcpClient\JsonRpc\Response;
 use Yankewei\AcpClient\Transport\TransportInterface;
+use Yankewei\AcpClient\Util\Path;
 
 final class Client
 {
@@ -258,6 +259,16 @@ final class Client
      */
     public function sessionList(?string $cwd = null, ?string $cursor = null, ?float $timeout = null): SessionListResult
     {
+        if ($this->strictProtocol) {
+            if (!$this->requireInitialized('session/list')->supportsSessionList()) {
+                throw new AcpException('Cannot call session/list: agent did not advertise sessionCapabilities.list');
+            }
+
+            if ($cwd !== null && !Path::isAbsolutePath($cwd)) {
+                throw new AcpException('Invalid session/list params: cwd must be an absolute path');
+            }
+        }
+
         /** @var array<string, mixed> $params */
         $params = [];
 
@@ -535,7 +546,7 @@ final class Client
 
         $initializeResult = $this->requireInitialized($method);
 
-        if (!$this->isAbsolutePath($cwd)) {
+        if (!Path::isAbsolutePath($cwd)) {
             throw new AcpException("Invalid {$method} params: cwd must be an absolute path");
         }
 
@@ -546,7 +557,7 @@ final class Client
         }
 
         foreach ($additionalDirectories as $directory) {
-            if (!$this->isAbsolutePath($directory)) {
+            if (!Path::isAbsolutePath($directory)) {
                 throw new AcpException(
                     "Invalid {$method} params: additionalDirectories entries must be absolute paths",
                 );
@@ -566,19 +577,6 @@ final class Client
         }
 
         return $this->initializeResult;
-    }
-
-    private function isAbsolutePath(string $path): bool
-    {
-        if (str_starts_with($path, '/')) {
-            return true;
-        }
-
-        if (preg_match('/^[A-Za-z]:[\\\\\\/]/', $path) === 1) {
-            return true;
-        }
-
-        return str_starts_with($path, '\\\\');
     }
 
     /**
@@ -623,7 +621,7 @@ final class Client
     {
         $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
         $command = $this->requireStringField($method, "mcpServers[{$index}].command", $server, 'command');
-        if (!$this->isAbsolutePath($command)) {
+        if (!Path::isAbsolutePath($command)) {
             throw new AcpException(
                 "Invalid {$method} params: mcpServers[{$index}].command must be an absolute path",
             );
