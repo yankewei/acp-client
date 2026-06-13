@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Event\Update;
 
-use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockFactory;
-use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
+use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentFactory;
+use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentInterface;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
@@ -15,7 +15,7 @@ final class ToolCallStatusUpdate implements SessionUpdate
     private const STATUSES = ['pending', 'in_progress', 'completed', 'failed'];
 
     /**
-     * @param ContentBlockInterface[] $content
+     * @param ToolCallContentInterface[] $content
      */
     public function __construct(
         private readonly string $sessionId,
@@ -54,7 +54,7 @@ final class ToolCallStatusUpdate implements SessionUpdate
         );
 
         /** @var array<int, array<string, mixed>> $contentList */
-        $content = ContentBlockFactory::fromArrayList($contentList);
+        $content = ToolCallContentFactory::fromArrayList($contentList);
 
         return new self(
             $sessionId,
@@ -85,9 +85,9 @@ final class ToolCallStatusUpdate implements SessionUpdate
     }
 
     /**
-     * @return ContentBlockInterface[]
+     * @return ToolCallContentInterface[]
      */
-    public function getContentBlocks(): array
+    public function getContentItems(): array
     {
         return $this->content;
     }
@@ -98,7 +98,7 @@ final class ToolCallStatusUpdate implements SessionUpdate
     public function getContent(): array
     {
         return array_map(
-            static fn (ContentBlockInterface $block): array => $block->toArray(),
+            static fn (ToolCallContentInterface $item): array => $item->toArray(),
             $this->content,
         );
     }

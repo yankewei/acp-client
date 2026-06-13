@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Tests\Event\Update;
 
 use PHPUnit\Framework\TestCase;
-use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
-use Yankewei\AcpClient\Dto\ContentBlock\TextContentBlock;
+use Yankewei\AcpClient\Dto\ToolCallContent\ContentToolCallContent;
+use Yankewei\AcpClient\Dto\ToolCallContent\DiffToolCallContent;
+use Yankewei\AcpClient\Dto\ToolCallContent\TerminalToolCallContent;
 use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallStatusUpdate;
 use Yankewei\AcpClient\Exception\AcpException;
@@ -20,8 +21,8 @@ final class ToolCallStatusUpdateTest extends TestCase
             'toolCallId' => 'call_1',
             'status' => 'in_progress',
             'content' => [
-                ['type' => 'text', 'text' => 'chunk 1'],
-                ['type' => 'text', 'text' => 'chunk 2'],
+                ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 1']],
+                ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 2']],
             ],
         ]);
 
@@ -30,17 +31,56 @@ final class ToolCallStatusUpdateTest extends TestCase
         self::assertSame('tool_call_update', $update->getUpdateType());
         self::assertSame('call_1', $update->getToolCallId());
         self::assertSame('in_progress', $update->getStatus());
-        self::assertCount(2, $update->getContentBlocks());
-        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[0]);
-        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[1]);
-        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[0]);
+        self::assertCount(2, $update->getContentItems());
+        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[0]);
+        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[1]);
         self::assertSame(
             [
-                ['type' => 'text', 'text' => 'chunk 1'],
-                ['type' => 'text', 'text' => 'chunk 2'],
+                ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 1']],
+                ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 2']],
             ],
             $update->getContent(),
         );
+    }
+
+    public function testParsesDiffContent(): void
+    {
+        $update = ToolCallStatusUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'tool_call_update',
+            'toolCallId' => 'call_1',
+            'status' => 'completed',
+            'content' => [
+                [
+                    'type' => 'diff',
+                    'path' => '/src/main.py',
+                    'newText' => 'print("hello")',
+                ],
+            ],
+        ]);
+
+        self::assertCount(1, $update->getContentItems());
+        $item = $update->getContentItems()[0];
+        self::assertInstanceOf(DiffToolCallContent::class, $item);
+        self::assertSame('/src/main.py', $item->getPath());
+        self::assertSame('print("hello")', $item->getNewText());
+        self::assertNull($item->getOldText());
+    }
+
+    public function testParsesTerminalContent(): void
+    {
+        $update = ToolCallStatusUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'tool_call_update',
+            'toolCallId' => 'call_1',
+            'status' => 'in_progress',
+            'content' => [
+                ['type' => 'terminal', 'terminalId' => 'term_abc'],
+            ],
+        ]);
+
+        self::assertCount(1, $update->getContentItems());
+        $item = $update->getContentItems()[0];
+        self::assertInstanceOf(TerminalToolCallContent::class, $item);
+        self::assertSame('term_abc', $item->getTerminalId());
     }
 
     public function testDefaultsForMissingStatusAndContent(): void

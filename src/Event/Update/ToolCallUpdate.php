@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Event\Update;
 
-use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockFactory;
-use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
+use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentFactory;
+use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentInterface;
+use Yankewei\AcpClient\Dto\ToolCallLocation;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
@@ -18,8 +19,8 @@ final class ToolCallUpdate implements SessionUpdate
     private const STATUSES = ['pending', 'in_progress', 'completed', 'failed'];
 
     /**
-     * @param ContentBlockInterface[] $content
-     * @param array<int, mixed> $locations
+     * @param ToolCallContentInterface[] $content
+     * @param ToolCallLocation[] $locations
      * @param array<string, mixed>|null $rawInput
      * @param array<string, mixed>|null $rawOutput
      */
@@ -77,11 +78,17 @@ final class ToolCallUpdate implements SessionUpdate
         );
 
         /** @var array<int, array<string, mixed>> $contentList */
-        $content = ContentBlockFactory::fromArrayList($contentList);
+        $content = ToolCallContentFactory::fromArrayList($contentList);
 
-        $locations = Assert::optionalList(
+        $locationsList = Assert::optionalList(
             $update['locations'] ?? null,
             'Invalid tool_call update: locations must be a list',
+        );
+
+        /** @var array<int, array<string, mixed>> $locationsList */
+        $locations = array_map(
+            static fn (array $loc): ToolCallLocation => ToolCallLocation::fromArray($loc),
+            $locationsList,
         );
 
         $rawInput = Assert::optionalObjectField(
@@ -140,9 +147,9 @@ final class ToolCallUpdate implements SessionUpdate
     }
 
     /**
-     * @return ContentBlockInterface[]
+     * @return ToolCallContentInterface[]
      */
-    public function getContentBlocks(): array
+    public function getContentItems(): array
     {
         return $this->content;
     }
@@ -153,13 +160,13 @@ final class ToolCallUpdate implements SessionUpdate
     public function getContent(): array
     {
         return array_map(
-            static fn (ContentBlockInterface $block): array => $block->toArray(),
+            static fn (ToolCallContentInterface $item): array => $item->toArray(),
             $this->content,
         );
     }
 
     /**
-     * @return array<int, mixed>
+     * @return ToolCallLocation[]
      */
     public function getLocations(): array
     {
