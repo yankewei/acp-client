@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Event\Update;
 
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockFactory;
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
 final class AgentMessageChunkUpdate implements SessionUpdate
 {
-    /**
-     * @param array<string, mixed> $content
-     */
     public function __construct(
         private readonly string $sessionId,
         private readonly ?string $messageId,
-        private readonly array $content,
+        private readonly ContentBlockInterface $content,
     ) {
     }
 
@@ -30,6 +29,12 @@ final class AgentMessageChunkUpdate implements SessionUpdate
             throw new AcpException('Invalid agent_message_chunk update: sessionUpdate must be agent_message_chunk');
         }
 
+        $content = Assert::requiredObjectField(
+            $update,
+            'content',
+            'Invalid agent_message_chunk update: content must be an object',
+        );
+
         return new self(
             $sessionId,
             Assert::optionalString(
@@ -37,11 +42,7 @@ final class AgentMessageChunkUpdate implements SessionUpdate
                 'messageId',
                 'Invalid agent_message_chunk update: messageId must be a string or null',
             ),
-            Assert::requiredObjectField(
-                $update,
-                'content',
-                'Invalid agent_message_chunk update: content must be an object',
-            ),
+            ContentBlockFactory::fromArray($content),
         );
     }
 
@@ -60,11 +61,16 @@ final class AgentMessageChunkUpdate implements SessionUpdate
         return $this->messageId;
     }
 
+    public function getContentBlock(): ContentBlockInterface
+    {
+        return $this->content;
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function getContent(): array
     {
-        return $this->content;
+        return $this->content->toArray();
     }
 }

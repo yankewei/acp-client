@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Tests\Event\Update;
 
 use PHPUnit\Framework\TestCase;
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
+use Yankewei\AcpClient\Dto\ContentBlock\TextContentBlock;
 use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallUpdate;
 use Yankewei\AcpClient\Exception\AcpException;
@@ -19,7 +21,10 @@ final class ToolCallUpdateTest extends TestCase
             'title' => 'Read file',
             'kind' => 'read',
             'status' => 'completed',
-            'content' => ['Line 1', 'Line 2'],
+            'content' => [
+                ['type' => 'text', 'text' => 'Line 1'],
+                ['type' => 'text', 'text' => 'Line 2'],
+            ],
             'locations' => [['path' => '/tmp/foo.txt']],
             'rawInput' => ['path' => '/tmp/foo.txt'],
             'rawOutput' => ['content' => 'hello'],
@@ -32,7 +37,16 @@ final class ToolCallUpdateTest extends TestCase
         self::assertSame('Read file', $update->getTitle());
         self::assertSame('read', $update->getKind());
         self::assertSame('completed', $update->getStatus());
-        self::assertSame(['Line 1', 'Line 2'], $update->getContent());
+        self::assertCount(2, $update->getContentBlocks());
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[0]);
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[1]);
+        self::assertSame(
+            [
+                ['type' => 'text', 'text' => 'Line 1'],
+                ['type' => 'text', 'text' => 'Line 2'],
+            ],
+            $update->getContent(),
+        );
         self::assertSame([['path' => '/tmp/foo.txt']], $update->getLocations());
         self::assertSame(['path' => '/tmp/foo.txt'], $update->getRawInput());
         self::assertSame(['content' => 'hello'], $update->getRawOutput());

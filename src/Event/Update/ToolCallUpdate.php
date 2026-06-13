@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Event\Update;
 
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockFactory;
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
@@ -16,7 +18,7 @@ final class ToolCallUpdate implements SessionUpdate
     private const STATUSES = ['pending', 'in_progress', 'completed', 'failed'];
 
     /**
-     * @param array<int, mixed> $content
+     * @param ContentBlockInterface[] $content
      * @param array<int, mixed> $locations
      * @param array<string, mixed>|null $rawInput
      * @param array<string, mixed>|null $rawOutput
@@ -69,10 +71,13 @@ final class ToolCallUpdate implements SessionUpdate
             'Invalid tool_call update: status must be one of pending, in_progress, completed, failed',
         ) ?? 'pending';
 
-        $content = Assert::optionalList(
+        $contentList = Assert::optionalList(
             $update['content'] ?? null,
             'Invalid tool_call update: content must be a list',
         );
+
+        /** @var array<int, array<string, mixed>> $contentList */
+        $content = ContentBlockFactory::fromArrayList($contentList);
 
         $locations = Assert::optionalList(
             $update['locations'] ?? null,
@@ -135,11 +140,22 @@ final class ToolCallUpdate implements SessionUpdate
     }
 
     /**
-     * @return array<int, mixed>
+     * @return ContentBlockInterface[]
+     */
+    public function getContentBlocks(): array
+    {
+        return $this->content;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
      */
     public function getContent(): array
     {
-        return $this->content;
+        return array_map(
+            static fn (ContentBlockInterface $block): array => $block->toArray(),
+            $this->content,
+        );
     }
 
     /**

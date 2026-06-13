@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Tests\Event\Update;
 
 use PHPUnit\Framework\TestCase;
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
+use Yankewei\AcpClient\Dto\ContentBlock\TextContentBlock;
 use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallStatusUpdate;
 use Yankewei\AcpClient\Exception\AcpException;
@@ -17,7 +19,10 @@ final class ToolCallStatusUpdateTest extends TestCase
             'sessionUpdate' => 'tool_call_update',
             'toolCallId' => 'call_1',
             'status' => 'in_progress',
-            'content' => ['chunk 1', 'chunk 2'],
+            'content' => [
+                ['type' => 'text', 'text' => 'chunk 1'],
+                ['type' => 'text', 'text' => 'chunk 2'],
+            ],
         ]);
 
         self::assertInstanceOf(SessionUpdate::class, $update);
@@ -25,7 +30,17 @@ final class ToolCallStatusUpdateTest extends TestCase
         self::assertSame('tool_call_update', $update->getUpdateType());
         self::assertSame('call_1', $update->getToolCallId());
         self::assertSame('in_progress', $update->getStatus());
-        self::assertSame(['chunk 1', 'chunk 2'], $update->getContent());
+        self::assertCount(2, $update->getContentBlocks());
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[0]);
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[1]);
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlocks()[0]);
+        self::assertSame(
+            [
+                ['type' => 'text', 'text' => 'chunk 1'],
+                ['type' => 'text', 'text' => 'chunk 2'],
+            ],
+            $update->getContent(),
+        );
     }
 
     public function testDefaultsForMissingStatusAndContent(): void

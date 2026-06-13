@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Yankewei\AcpClient\Tests\Event\Update;
 
 use PHPUnit\Framework\TestCase;
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockInterface;
+use Yankewei\AcpClient\Dto\ContentBlock\TextContentBlock;
 use Yankewei\AcpClient\Event\Update\AgentMessageChunkUpdate;
 use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Exception\AcpException;
@@ -23,6 +25,8 @@ final class AgentMessageChunkUpdateTest extends TestCase
         self::assertSame('sess_1', $update->getSessionId());
         self::assertSame('agent_message_chunk', $update->getUpdateType());
         self::assertSame('msg_1', $update->getMessageId());
+        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlock());
+        self::assertInstanceOf(ContentBlockInterface::class, $update->getContentBlock());
         self::assertSame(['type' => 'text', 'text' => 'Hello'], $update->getContent());
     }
 
