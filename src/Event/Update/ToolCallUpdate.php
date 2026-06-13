@@ -91,7 +91,17 @@ final class ToolCallUpdate implements SessionUpdate
             'Invalid tool_call update: rawOutput must be an object',
         );
 
-        return new self($sessionId, $toolCallId, $title, $kind, $status, $content, $locations, $rawInput, $rawOutput);
+        return new self(
+            $sessionId,
+            $toolCallId,
+            $title,
+            $kind,
+            $status,
+            $content,
+            $locations,
+            $rawInput,
+            $rawOutput,
+        );
     }
 
     public function getSessionId(): string
