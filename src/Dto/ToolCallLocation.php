@@ -11,8 +11,7 @@ final class ToolCallLocation
     public function __construct(
         private readonly string $path,
         private readonly ?int $line = null,
-    ) {
-    }
+    ) {}
 
     public function getPath(): string
     {

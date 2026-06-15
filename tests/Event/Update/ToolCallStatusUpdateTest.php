@@ -105,7 +105,9 @@ final class ToolCallStatusUpdateTest extends TestCase
     public function testRejectsInvalidStatus(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid tool_call_update update: status must be one of pending, in_progress, completed, failed');
+        $this->expectExceptionMessage(
+            'Invalid tool_call_update update: status must be one of pending, in_progress, completed, failed',
+        );
 
         ToolCallStatusUpdate::fromUpdate('sess_1', [
             'sessionUpdate' => 'tool_call_update',

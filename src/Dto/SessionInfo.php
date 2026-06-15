@@ -21,8 +21,7 @@ final class SessionInfo
         private readonly ?string $title = null,
         private readonly ?string $updatedAt = null,
         private readonly array $meta = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -31,16 +30,8 @@ final class SessionInfo
      */
     public static function fromArray(array $data): self
     {
-        $sessionId = Assert::requiredString(
-            $data,
-            'sessionId',
-            'Invalid session info: sessionId must be a string',
-        );
-        $cwd = Assert::requiredString(
-            $data,
-            'cwd',
-            'Invalid session info: cwd must be a string',
-        );
+        $sessionId = Assert::requiredString($data, 'sessionId', 'Invalid session info: sessionId must be a string');
+        $cwd = Assert::requiredString($data, 'cwd', 'Invalid session info: cwd must be a string');
 
         if (!Path::isAbsolutePath($cwd)) {
             throw new AcpException('Invalid session info: cwd must be an absolute path');
@@ -49,10 +40,7 @@ final class SessionInfo
         $additionalDirectories = self::additionalDirectories($data['additionalDirectories'] ?? []);
         $title = DtoHelper::optionalString($data, 'title');
         $updatedAt = DtoHelper::optionalString($data, 'updatedAt');
-        $meta = Assert::object(
-            $data['_meta'] ?? [],
-            'Invalid session info: _meta must be an object',
-        );
+        $meta = Assert::object($data['_meta'] ?? [], 'Invalid session info: _meta must be an object');
 
         return new self($sessionId, $cwd, $additionalDirectories, $title, $updatedAt, $meta);
     }
@@ -100,10 +88,7 @@ final class SessionInfo
      */
     private static function additionalDirectories(mixed $value): array
     {
-        $directories = Assert::list(
-            $value,
-            'Invalid session info: additionalDirectories must be a list of strings',
-        );
+        $directories = Assert::list($value, 'Invalid session info: additionalDirectories must be a list of strings');
 
         foreach ($directories as $directory) {
             if (!is_string($directory)) {

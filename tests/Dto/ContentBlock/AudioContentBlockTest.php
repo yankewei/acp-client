@@ -18,10 +18,7 @@ final class AudioContentBlockTest extends TestCase
         self::assertSame('base64', $block->getData());
         self::assertSame('audio/wav', $block->getMimeType());
         self::assertNull($block->getAnnotations());
-        self::assertSame(
-            ['type' => 'audio', 'data' => 'base64', 'mimeType' => 'audio/wav'],
-            $block->toArray(),
-        );
+        self::assertSame(['type' => 'audio', 'data' => 'base64', 'mimeType' => 'audio/wav'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void

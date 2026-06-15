@@ -911,17 +911,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['configOptions' => []]);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(
-            ['configOptions' => []],
-            $client->setConfigOption('sess_1', 'mode', 'code'),
-        );
+        self::assertSame(['configOptions' => []], $client->setConfigOption('sess_1', 'mode', 'code'));
 
         $sent = $this->sentMessage($transport);
         self::assertSame('session/set_config_option', $sent['method']);
-        self::assertSame(
-            ['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'],
-            $sent['params'],
-        );
+        self::assertSame(['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'], $sent['params']);
     }
 
     public function testSetModeCallsAcpMethod(): void
@@ -1134,12 +1128,15 @@ final class ClientTest extends TestCase
         $result = $client->call('initialize');
 
         self::assertSame(['ok' => true], $result);
-        self::assertSame([
+        self::assertSame(
             [
-                'method' => 'session/update',
-                'params' => ['status' => 'running'],
+                [
+                    'method' => 'session/update',
+                    'params' => ['status' => 'running'],
+                ],
             ],
-        ], $received);
+            $received,
+        );
     }
 
     public function testMethodSpecificListenerOnlyReceivesMatchingNotifications(): void
@@ -1347,10 +1344,7 @@ final class ClientTest extends TestCase
         $response = self::decode($transport->sent[1]);
         self::assertSame('req-1', $response['id']);
         self::assertArrayNotHasKey('error', $response);
-        self::assertSame(
-            ['method' => 'permission/request', 'answer' => 'approved'],
-            $response['result'],
-        );
+        self::assertSame(['method' => 'permission/request', 'answer' => 'approved'], $response['result']);
     }
 
     public function testMethodRequestHandlerTakesPrecedenceOverAnyRequestHandler(): void
@@ -1369,8 +1363,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onAnyRequest(static fn (string $method, array $params): array => ['answer' => 'fallback']);
-        $client->onRequest('permission/request', static fn (array $params): array => ['answer' => 'specific']);
+        $client->onAnyRequest(static fn(string $method, array $params): array => ['answer' => 'fallback']);
+        $client->onRequest('permission/request', static fn(array $params): array => ['answer' => 'specific']);
 
         $client->call('initialize');
 
@@ -1395,7 +1389,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $handler = static fn (string $method, array $params): array => ['answer' => 'fallback'];
+        $handler = static fn(string $method, array $params): array => ['answer' => 'fallback'];
         $client->onAnyRequest($handler);
         $client->offAnyRequest($handler);
 
@@ -1619,7 +1613,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $handler = static fn (RequestPermission $request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
+        $handler =
+            static fn(RequestPermission $request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
 
         $client->onRequestPermission($handler);
         $client->offRequestPermission($handler);

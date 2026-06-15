@@ -17,8 +17,7 @@ final class InitializeResult
         private readonly ?int $protocolVersion,
         private readonly array $agentCapabilities,
         private readonly array $authMethods = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -39,23 +38,17 @@ final class InitializeResult
         );
 
         $authMethods = $data['authMethods'] ?? [];
-        $authMethods = Assert::list(
-            $authMethods,
-            'Invalid initialize result: authMethods must be a list',
-        );
+        $authMethods = Assert::list($authMethods, 'Invalid initialize result: authMethods must be a list');
 
-        return new self(
-            $protocolVersion,
-            $agentCapabilities,
-            array_map(
-                static function (mixed $authMethod): AuthMethod {
-                    return AuthMethod::fromArray(
-                        Assert::object($authMethod, 'Invalid initialize result: authMethods entries must be objects'),
-                    );
-                },
-                $authMethods,
-            ),
-        );
+        return new self($protocolVersion, $agentCapabilities, array_map(
+            static function (mixed $authMethod): AuthMethod {
+                return AuthMethod::fromArray(Assert::object(
+                    $authMethod,
+                    'Invalid initialize result: authMethods entries must be objects',
+                ));
+            },
+            $authMethods,
+        ));
     }
 
     public function getProtocolVersion(): ?int
@@ -175,5 +168,4 @@ final class InitializeResult
 
         return ($capabilities[$capability] ?? false) === true;
     }
-
 }

@@ -53,9 +53,6 @@ final class DiffToolCallContentTest extends TestCase
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content');
 
-        self::assertSame(
-            ['type' => 'diff', 'path' => '/tmp/foo.txt', 'newText' => 'new content'],
-            $diff->toArray(),
-        );
+        self::assertSame(['type' => 'diff', 'path' => '/tmp/foo.txt', 'newText' => 'new content'], $diff->toArray());
     }
 }

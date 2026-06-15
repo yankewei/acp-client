@@ -25,9 +25,6 @@ final class TerminalToolCallContentTest extends TestCase
     {
         $terminal = new TerminalToolCallContent('term_xyz789');
 
-        self::assertSame(
-            ['type' => 'terminal', 'terminalId' => 'term_xyz789'],
-            $terminal->toArray(),
-        );
+        self::assertSame(['type' => 'terminal', 'terminalId' => 'term_xyz789'], $terminal->toArray());
     }
 }

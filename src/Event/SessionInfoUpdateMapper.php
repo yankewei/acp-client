@@ -9,9 +9,7 @@ use Yankewei\AcpClient\Util\Assert;
 
 final class SessionInfoUpdateMapper
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * @throws AcpException

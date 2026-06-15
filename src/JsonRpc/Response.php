@@ -15,8 +15,7 @@ final class Response
 
     public function __construct(
         private readonly int|string|null $id,
-    ) {
-    }
+    ) {}
 
     /**
      * @throws AcpException
@@ -31,7 +30,11 @@ final class Response
         $id = self::responseId($data);
 
         return array_key_exists('error', $data)
-            ? self::fromError($id, Assert::requiredObjectField($data, 'error', 'Invalid JSON-RPC response: error must be an object'))
+            ? self::fromError($id, Assert::requiredObjectField(
+                $data,
+                'error',
+                'Invalid JSON-RPC response: error must be an object',
+            ))
             : self::fromResult($id, $data['result']);
     }
 

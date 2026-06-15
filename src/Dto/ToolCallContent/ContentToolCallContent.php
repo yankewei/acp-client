@@ -10,8 +10,7 @@ final class ContentToolCallContent implements ToolCallContentInterface
 {
     public function __construct(
         private readonly ContentBlockInterface $content,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

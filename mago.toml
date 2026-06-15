@@ -1,0 +1,27 @@
+#:schema https://mago.carthage.software/1.30.0/schema.json
+version = "1"
+php-version = "8.1"
+
+[source]
+paths = ["src", "tests"]
+includes = ["vendor"]
+
+[source.glob]
+literal-separator = true
+
+[analyzer]
+baseline = "analyzer-baseline.toml"
+check-missing-type-hints = true
+check-missing-override = true
+find-unused-parameters = true
+find-overly-wide-return-types = true
+enforce-class-finality = true
+ignore = [
+    { code = "enforce-class-finality", in = ["tests/"] },
+]
+
+[linter]
+baseline = "lint-baseline.toml"
+integrations = ["phpunit"]
+
+[formatter]

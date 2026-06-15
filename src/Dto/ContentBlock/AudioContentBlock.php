@@ -10,8 +10,7 @@ final class AudioContentBlock implements ContentBlockInterface
         private readonly string $data,
         private readonly string $mimeType,
         private readonly ?Annotations $annotations = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

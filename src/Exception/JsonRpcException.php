@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Exception;
 
-class JsonRpcException extends AcpException
+final class JsonRpcException extends AcpException
 {
     public const AUTHENTICATION_REQUIRED = -32000;
 

@@ -267,7 +267,9 @@ handler is still pending for the same session, the client sends the ACP-required
 ```bash
 composer update
 vendor/bin/phpunit
-vendor/bin/phpstan analyse -c phpstan.neon.dist
+vendor/bin/mago analyze
+vendor/bin/mago lint
+vendor/bin/mago format
 ```
 
 ## License

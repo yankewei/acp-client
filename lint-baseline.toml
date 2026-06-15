@@ -1,0 +1,493 @@
+variant = "loose"
+
+[[issues]]
+file = "src/Client.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "kan-defect"
+message = "Class has a high kan defect score."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "literal-named-argument"
+message = "Literal argument `512` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "no-boolean-flag-parameter"
+message = "Avoid boolean flag parameters."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 6
+
+[[issues]]
+file = "src/Client.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Dto/ContentBlock/ResourceContentBlock.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Dto/ContentBlock/ResourceLinkContentBlock.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Dto/InitializeResult.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Dto/InitializeResult.php"
+code = "prefer-arrow-function"
+message = "This closure can be simplified to a more concise arrow function."
+count = 1
+
+[[issues]]
+file = "src/Dto/InitializeResult.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Dto/RequestPermission.php"
+code = "inline-variable-return"
+message = "Variable assignment can be inlined into the return statement."
+count = 1
+
+[[issues]]
+file = "src/Dto/RequestPermission.php"
+code = "prefer-arrow-function"
+message = "This closure can be simplified to a more concise arrow function."
+count = 1
+
+[[issues]]
+file = "src/Dto/SessionInfo.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Event/SessionInfoUpdate.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Event/Update/PlanUpdate.php"
+code = "prefer-arrow-function"
+message = "This closure can be simplified to a more concise arrow function."
+count = 1
+
+[[issues]]
+file = "src/Event/Update/ToolCallUpdate.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Event/Update/ToolCallUpdate.php"
+code = "prefer-first-class-callable"
+message = "Use first-class callable syntax `...` instead of a arrow function."
+count = 1
+
+[[issues]]
+file = "src/Exception/JsonRpcException.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 1
+
+[[issues]]
+file = "src/JsonRpc/Response.php"
+code = "literal-named-argument"
+message = "Literal argument `512` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "src/JsonRpc/Response.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "halstead"
+message = "Method has a high halstead difficulty"
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "kan-defect"
+message = "Class has a high kan defect score."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "literal-named-argument"
+message = 'Literal argument `"\n"` should be passed as a named argument for clarity.'
+count = 2
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "literal-named-argument"
+message = "Literal argument `false` should be passed as a named argument for clarity."
+count = 2
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 4
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "no-isset"
+message = "Use of the `isset` construct."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Util/Assert.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Util/Assert.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "src/Util/Assert.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 120
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "inline-variable-return"
+message = "Variable assignment can be inlined into the return statement."
+count = 3
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "literal-named-argument"
+message = "Literal argument `512` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "prefer-arrow-function"
+message = "This closure can be simplified to a more concise arrow function."
+count = 3
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "prefer-static-closure"
+message = "This closure does not use `$this` and should be declared static."
+count = 1
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 6
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Dto/ContentBlock/AnnotationsTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 4
+
+[[issues]]
+file = "tests/Dto/ContentBlock/AudioContentBlockTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 6
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ContentBlockFactoryTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 20
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ContentBlockFactoryTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ImageContentBlockTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 8
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ResourceContentBlockTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 11
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ResourceLinkContentBlockTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 10
+
+[[issues]]
+file = "tests/Dto/ContentBlock/TextContentBlockTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 5
+
+[[issues]]
+file = "tests/Dto/InitializeResultTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 34
+
+[[issues]]
+file = "tests/Dto/PromptResultTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 8
+
+[[issues]]
+file = "tests/Dto/RequestPermissionOutcomeTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 2
+
+[[issues]]
+file = "tests/Dto/RequestPermissionTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 7
+
+[[issues]]
+file = "tests/Dto/SessionListResultTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 11
+
+[[issues]]
+file = "tests/Dto/SessionTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 5
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/ContentToolCallContentTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 3
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/DiffToolCallContentTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 7
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/TerminalToolCallContentTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 3
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/ToolCallContentFactoryTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 18
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/ToolCallContentFactoryTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Dto/ToolCallLocationTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 9
+
+[[issues]]
+file = "tests/Event/NotificationTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 14
+
+[[issues]]
+file = "tests/Event/SessionInfoUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 3
+
+[[issues]]
+file = "tests/Event/Update/AgentMessageChunkUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 8
+
+[[issues]]
+file = "tests/Event/Update/PlanUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 16
+
+[[issues]]
+file = "tests/Event/Update/SessionUpdateMapperTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 25
+
+[[issues]]
+file = "tests/Event/Update/SessionUpdateMapperTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Event/Update/ToolCallStatusUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 19
+
+[[issues]]
+file = "tests/Event/Update/ToolCallUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 37
+
+[[issues]]
+file = "tests/Event/Update/ToolCallUpdateTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Event/Update/UsageUpdateTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 9
+
+[[issues]]
+file = "tests/Event/Update/UsageUpdateTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Exception/JsonRpcExceptionTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 2
+
+[[issues]]
+file = "tests/Exception/JsonRpcExceptionTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 1
+
+[[issues]]
+file = "tests/Fixtures/stderr-exit-agent.php"
+code = "literal-named-argument"
+message = "Literal argument `'agent failed before responding'` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/Fixtures/stdio-agent.php"
+code = "literal-named-argument"
+message = "Literal argument `512` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/Fixtures/stdio-agent.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/Fixtures/stdio-once-agent.php"
+code = "literal-named-argument"
+message = "Literal argument `512` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/Fixtures/stdio-once-agent.php"
+code = "literal-named-argument"
+message = "Literal argument `true` should be passed as a named argument for clarity."
+count = 1
+
+[[issues]]
+file = "tests/JsonRpc/ResponseTest.php"
+code = "assertion-style"
+message = "Inconsistent assertions style."
+count = 8
+
+[[issues]]
+file = "tests/JsonRpc/ResponseTest.php"
+code = "readable-literal"
+message = "Numeric literal could use underscore separators for readability."
+count = 1

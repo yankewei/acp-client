@@ -103,17 +103,23 @@ final class InitializeResultTest extends TestCase
 
     public function testSupportsLogoutRequiresObjectCapability(): void
     {
-        self::assertFalse(InitializeResult::fromArray([
-            'agentCapabilities' => ['auth' => ['logout' => null]],
-        ])->supportsLogout());
+        self::assertFalse(
+            InitializeResult::fromArray([
+                'agentCapabilities' => ['auth' => ['logout' => null]],
+            ])->supportsLogout(),
+        );
 
-        self::assertTrue(InitializeResult::fromArray([
-            'agentCapabilities' => ['auth' => ['logout' => []]],
-        ])->supportsLogout());
+        self::assertTrue(
+            InitializeResult::fromArray([
+                'agentCapabilities' => ['auth' => ['logout' => []]],
+            ])->supportsLogout(),
+        );
 
-        self::assertTrue(InitializeResult::fromArray([
-            'agentCapabilities' => ['auth' => ['logout' => ['_meta' => []]]],
-        ])->supportsLogout());
+        self::assertTrue(
+            InitializeResult::fromArray([
+                'agentCapabilities' => ['auth' => ['logout' => ['_meta' => []]]],
+            ])->supportsLogout(),
+        );
     }
 
     public function testCapabilityHelpers(): void

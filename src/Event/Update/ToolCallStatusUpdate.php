@@ -22,8 +22,7 @@ final class ToolCallStatusUpdate implements SessionUpdate
         private readonly string $toolCallId,
         private readonly ?string $status,
         private readonly array $content,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $update
@@ -56,12 +55,7 @@ final class ToolCallStatusUpdate implements SessionUpdate
         /** @var array<int, array<string, mixed>> $contentList */
         $content = ToolCallContentFactory::fromArrayList($contentList);
 
-        return new self(
-            $sessionId,
-            $toolCallId,
-            $status,
-            $content,
-        );
+        return new self($sessionId, $toolCallId, $status, $content);
     }
 
     public function getSessionId(): string
@@ -93,13 +87,13 @@ final class ToolCallStatusUpdate implements SessionUpdate
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>>
      */
     public function getContent(): array
     {
-        return array_map(
-            static fn (ToolCallContentInterface $item): array => $item->toArray(),
+        return array_values(array_map(
+            static fn(ToolCallContentInterface $item): array => $item->toArray(),
             $this->content,
-        );
+        ));
     }
 }

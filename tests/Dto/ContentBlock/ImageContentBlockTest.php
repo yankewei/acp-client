@@ -34,10 +34,7 @@ final class ImageContentBlockTest extends TestCase
     {
         $block = new ImageContentBlock('base64', 'image/png');
 
-        self::assertSame(
-            ['type' => 'image', 'data' => 'base64', 'mimeType' => 'image/png'],
-            $block->toArray(),
-        );
+        self::assertSame(['type' => 'image', 'data' => 'base64', 'mimeType' => 'image/png'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void

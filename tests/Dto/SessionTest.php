@@ -26,10 +26,7 @@ final class SessionTest extends TestCase
             ],
         ]);
 
-        self::assertSame(
-            [['id' => 'mode', 'currentValue' => 'code']],
-            $session->getConfigOptions(),
-        );
+        self::assertSame([['id' => 'mode', 'currentValue' => 'code']], $session->getConfigOptions());
     }
 
     public function testFromArrayAllowsMissingFields(): void

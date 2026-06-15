@@ -21,8 +21,7 @@ final class SessionInfoUpdate implements SessionUpdate
         private readonly ?string $updatedAt,
         private readonly bool $hasMeta,
         private readonly ?array $meta,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $update
@@ -36,11 +35,7 @@ final class SessionInfoUpdate implements SessionUpdate
         }
 
         $hasTitle = array_key_exists('title', $update);
-        $title = self::nullableString(
-            $update,
-            'title',
-            'Invalid session info update: title must be a string or null',
-        );
+        $title = self::nullableString($update, 'title', 'Invalid session info update: title must be a string or null');
 
         $hasUpdatedAt = array_key_exists('updatedAt', $update);
         $updatedAt = self::nullableString(
@@ -52,10 +47,7 @@ final class SessionInfoUpdate implements SessionUpdate
         $hasMeta = array_key_exists('_meta', $update);
         $meta = null;
         if ($hasMeta && $update['_meta'] !== null) {
-            $meta = Assert::object(
-                $update['_meta'],
-                'Invalid session info update: _meta must be an object or null',
-            );
+            $meta = Assert::object($update['_meta'], 'Invalid session info update: _meta must be an object or null');
         }
 
         return new self($sessionId, $hasTitle, $title, $hasUpdatedAt, $updatedAt, $hasMeta, $meta);

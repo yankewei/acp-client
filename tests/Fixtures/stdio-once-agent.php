@@ -12,9 +12,11 @@ if (!is_array($request)) {
     exit(0);
 }
 
-echo json_encode([
-    'jsonrpc' => '2.0',
-    'id' => $request['id'],
-    'result' => ['ok' => true],
-], JSON_THROW_ON_ERROR) . PHP_EOL;
+echo
+    json_encode([
+        'jsonrpc' => '2.0',
+        'id' => $request['id'],
+        'result' => ['ok' => true],
+    ], JSON_THROW_ON_ERROR) . PHP_EOL
+;
 flush();

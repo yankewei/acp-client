@@ -34,8 +34,7 @@ final class ToolCallUpdate implements SessionUpdate
         private readonly array $locations,
         private readonly ?array $rawInput,
         private readonly ?array $rawOutput,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $update
@@ -54,23 +53,21 @@ final class ToolCallUpdate implements SessionUpdate
             'Invalid tool_call update: toolCallId must be a string',
         );
 
-        $title = Assert::requiredString(
-            $update,
-            'title',
-            'Invalid tool_call update: title must be a string',
-        );
+        $title = Assert::requiredString($update, 'title', 'Invalid tool_call update: title must be a string');
 
-        $kind = Assert::optionalStringInEnum(
-            $update['kind'] ?? null,
-            self::KINDS,
-            'Invalid tool_call update: kind must be one of read, edit, delete, move, search, execute, think, fetch, other',
-        ) ?? 'other';
+        $kind =
+            Assert::optionalStringInEnum(
+                $update['kind'] ?? null,
+                self::KINDS,
+                'Invalid tool_call update: kind must be one of read, edit, delete, move, search, execute, think, fetch, other',
+            ) ?? 'other';
 
-        $status = Assert::optionalStringInEnum(
-            $update['status'] ?? null,
-            self::STATUSES,
-            'Invalid tool_call update: status must be one of pending, in_progress, completed, failed',
-        ) ?? 'pending';
+        $status =
+            Assert::optionalStringInEnum(
+                $update['status'] ?? null,
+                self::STATUSES,
+                'Invalid tool_call update: status must be one of pending, in_progress, completed, failed',
+            ) ?? 'pending';
 
         $contentList = Assert::optionalList(
             $update['content'] ?? null,
@@ -86,10 +83,9 @@ final class ToolCallUpdate implements SessionUpdate
         );
 
         /** @var array<int, array<string, mixed>> $locationsList */
-        $locations = array_map(
-            static fn (array $loc): ToolCallLocation => ToolCallLocation::fromArray($loc),
-            $locationsList,
-        );
+        $locations = array_map(static fn(array $loc): ToolCallLocation => ToolCallLocation::fromArray(
+            $loc,
+        ), $locationsList);
 
         $rawInput = Assert::optionalObjectField(
             $update,
@@ -103,17 +99,7 @@ final class ToolCallUpdate implements SessionUpdate
             'Invalid tool_call update: rawOutput must be an object',
         );
 
-        return new self(
-            $sessionId,
-            $toolCallId,
-            $title,
-            $kind,
-            $status,
-            $content,
-            $locations,
-            $rawInput,
-            $rawOutput,
-        );
+        return new self($sessionId, $toolCallId, $title, $kind, $status, $content, $locations, $rawInput, $rawOutput);
     }
 
     public function getSessionId(): string
@@ -155,14 +141,14 @@ final class ToolCallUpdate implements SessionUpdate
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>>
      */
     public function getContent(): array
     {
-        return array_map(
-            static fn (ToolCallContentInterface $item): array => $item->toArray(),
+        return array_values(array_map(
+            static fn(ToolCallContentInterface $item): array => $item->toArray(),
             $this->content,
-        );
+        ));
     }
 
     /**

@@ -22,18 +22,14 @@ final class Error
      */
     public static function fromArray(array $data): self
     {
-        $code = Assert::requiredInt(
-            $data,
-            "code",
-            "Invalid JSON-RPC response: error.code must be an integer",
-        );
+        $code = Assert::requiredInt($data, 'code', 'Invalid JSON-RPC response: error.code must be an integer');
         $message = Assert::requiredString(
             $data,
-            "message",
-            "Invalid JSON-RPC response: error.message must be a string",
+            'message',
+            'Invalid JSON-RPC response: error.message must be a string',
         );
 
-        return new self($code, $message, $data["data"] ?? null);
+        return new self($code, $message, $data['data'] ?? null);
     }
 
     public function getCode(): int

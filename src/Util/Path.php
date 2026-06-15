@@ -6,9 +6,7 @@ namespace Yankewei\AcpClient\Util;
 
 final class Path
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     public static function isAbsolutePath(string $path): bool
     {

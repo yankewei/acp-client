@@ -209,7 +209,9 @@ final class ToolCallUpdateTest extends TestCase
     public function testRejectsInvalidKind(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid tool_call update: kind must be one of read, edit, delete, move, search, execute, think, fetch, other');
+        $this->expectExceptionMessage(
+            'Invalid tool_call update: kind must be one of read, edit, delete, move, search, execute, think, fetch, other',
+        );
 
         ToolCallUpdate::fromUpdate('sess_1', [
             'sessionUpdate' => 'tool_call',
@@ -222,7 +224,9 @@ final class ToolCallUpdateTest extends TestCase
     public function testRejectsInvalidStatus(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid tool_call update: status must be one of pending, in_progress, completed, failed');
+        $this->expectExceptionMessage(
+            'Invalid tool_call update: status must be one of pending, in_progress, completed, failed',
+        );
 
         ToolCallUpdate::fromUpdate('sess_1', [
             'sessionUpdate' => 'tool_call',

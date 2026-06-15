@@ -10,7 +10,6 @@ use Yankewei\AcpClient\Dto\ToolCallContent\ContentToolCallContent;
 use Yankewei\AcpClient\Dto\ToolCallContent\DiffToolCallContent;
 use Yankewei\AcpClient\Dto\ToolCallContent\TerminalToolCallContent;
 use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentFactory;
-use Yankewei\AcpClient\Dto\ToolCallContent\ToolCallContentInterface;
 use Yankewei\AcpClient\Exception\AcpException;
 
 final class ToolCallContentFactoryTest extends TestCase

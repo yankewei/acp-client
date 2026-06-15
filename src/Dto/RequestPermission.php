@@ -17,8 +17,7 @@ final class RequestPermission
         private readonly string $sessionId,
         private readonly array $toolCall,
         private readonly array $options,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -53,12 +52,10 @@ final class RequestPermission
             $toolCall,
             array_map(
                 static function (mixed $option, int $index): PermissionOption {
-                    return PermissionOption::fromArray(
-                        Assert::object(
-                            $option,
-                            "Invalid session/request_permission params: options[{$index}] must be an object",
-                        ),
-                    );
+                    return PermissionOption::fromArray(Assert::object(
+                        $option,
+                        "Invalid session/request_permission params: options[{$index}] must be an object",
+                    ));
                 },
                 $options,
                 array_keys($options),

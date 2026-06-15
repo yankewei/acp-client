@@ -29,8 +29,7 @@ final class PromptResult
     public function __construct(
         private readonly string $stopReason,
         private readonly array $data,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -40,7 +39,7 @@ final class PromptResult
     public static function fromArray(array $data): self
     {
         $stopReason = DtoHelper::requireString($data, 'stopReason');
-        if (!isset(self::STOP_REASONS[$stopReason])) {
+        if (!array_key_exists($stopReason, self::STOP_REASONS)) {
             throw new AcpException('Invalid session/prompt response: stopReason is not supported');
         }
 

@@ -9,8 +9,7 @@ final class TextContentBlock implements ContentBlockInterface
     public function __construct(
         private readonly string $text,
         private readonly ?Annotations $annotations = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

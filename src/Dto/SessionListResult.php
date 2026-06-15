@@ -15,8 +15,7 @@ final class SessionListResult
     public function __construct(
         private readonly array $sessionInfos,
         private readonly ?string $nextCursor,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -29,35 +28,30 @@ final class SessionListResult
             throw new AcpException('Invalid session/list result: sessions is required');
         }
 
-        $sessions = Assert::list(
-            $data['sessions'],
-            'Invalid session/list result: sessions must be an array',
-        );
+        $sessions = Assert::list($data['sessions'], 'Invalid session/list result: sessions must be an array');
 
         $nextCursor = DtoHelper::optionalString($data, 'nextCursor');
 
         $sessionInfos = [];
         foreach ($sessions as $session) {
-            $sessionInfos[] = SessionInfo::fromArray(
-                Assert::object(
-                    $session,
-                    'Invalid session/list result: each session must be an object',
-                ),
-            );
+            $sessionInfos[] = SessionInfo::fromArray(Assert::object(
+                $session,
+                'Invalid session/list result: each session must be an object',
+            ));
         }
 
         return new self($sessionInfos, $nextCursor);
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>>
      */
     public function getSessions(): array
     {
-        return array_map(
-            static fn (SessionInfo $sessionInfo): array => $sessionInfo->toArray(),
+        return array_values(array_map(
+            static fn(SessionInfo $sessionInfo): array => $sessionInfo->toArray(),
             $this->sessionInfos,
-        );
+        ));
     }
 
     /**

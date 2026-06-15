@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Dto;
 
-use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Assert;
 
 final class DtoHelper

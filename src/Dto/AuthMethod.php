@@ -14,8 +14,7 @@ final class AuthMethod
         private readonly string $name,
         private readonly ?string $description = null,
         private readonly string $type = 'agent',
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -24,26 +23,14 @@ final class AuthMethod
      */
     public static function fromArray(array $data): self
     {
-        $id = Assert::requiredString(
-            $data,
-            'id',
-            'Invalid auth method: id must be a string',
-        );
-        $name = Assert::requiredString(
-            $data,
-            'name',
-            'Invalid auth method: name must be a string',
-        );
+        $id = Assert::requiredString($data, 'id', 'Invalid auth method: id must be a string');
+        $name = Assert::requiredString($data, 'name', 'Invalid auth method: name must be a string');
         $description = Assert::optionalString(
             $data,
             'description',
             'Invalid auth method: description must be a string',
         );
-        $type = Assert::optionalString(
-            $data,
-            'type',
-            'Invalid auth method: type must be a string',
-        ) ?? 'agent';
+        $type = Assert::optionalString($data, 'type', 'Invalid auth method: type must be a string') ?? 'agent';
 
         if ($type !== 'agent') {
             throw new AcpException('Invalid auth method: type must be agent');

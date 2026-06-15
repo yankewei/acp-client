@@ -34,10 +34,7 @@ final class RequestPermissionTest extends TestCase
 
         self::assertSame('sess_1', $request->getSessionId());
         self::assertSame('call_1', $request->getToolCallId());
-        self::assertSame(
-            ['toolCallId' => 'call_1', 'title' => 'Edit file'],
-            $request->getToolCall(),
-        );
+        self::assertSame(['toolCallId' => 'call_1', 'title' => 'Edit file'], $request->getToolCall());
 
         $options = $request->getOptions();
         self::assertCount(2, $options);
@@ -60,7 +57,9 @@ final class RequestPermissionTest extends TestCase
     public function testRejectsMissingToolCallId(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid session/request_permission params: toolCall.toolCallId must be a string');
+        $this->expectExceptionMessage(
+            'Invalid session/request_permission params: toolCall.toolCallId must be a string',
+        );
 
         RequestPermission::fromArray([
             'sessionId' => 'sess_1',

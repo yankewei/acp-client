@@ -15,8 +15,7 @@ final class AgentMessageChunkUpdate implements SessionUpdate
         private readonly string $sessionId,
         private readonly ?string $messageId,
         private readonly ContentBlockInterface $content,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $update

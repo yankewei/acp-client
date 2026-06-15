@@ -17,8 +17,7 @@ final class UsageUpdate implements SessionUpdate
         private readonly int $used,
         private readonly int $size,
         private readonly ?array $cost,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $update
@@ -31,34 +30,22 @@ final class UsageUpdate implements SessionUpdate
             throw new AcpException('Invalid usage_update update: sessionUpdate must be usage_update');
         }
 
-        $used = Assert::requiredInt(
-            $update,
-            'used',
-            'Invalid usage_update update: used must be an integer',
-        );
+        $used = Assert::requiredInt($update, 'used', 'Invalid usage_update update: used must be an integer');
 
-        $size = Assert::requiredInt(
-            $update,
-            'size',
-            'Invalid usage_update update: size must be an integer',
-        );
+        $size = Assert::requiredInt($update, 'size', 'Invalid usage_update update: size must be an integer');
 
         $cost = null;
         if (array_key_exists('cost', $update)) {
-            $cost = Assert::object(
-                $update['cost'],
-                'Invalid usage_update update: cost must be an object',
-            );
+            $cost = Assert::object($update['cost'], 'Invalid usage_update update: cost must be an object');
 
-            if (!array_key_exists('amount', $cost) || (!is_int($cost['amount']) && !is_float($cost['amount']) && !is_string($cost['amount']))) {
+            if (
+                !array_key_exists('amount', $cost)
+                || !is_int($cost['amount']) && !is_float($cost['amount']) && !is_string($cost['amount'])
+            ) {
                 throw new AcpException('Invalid usage_update update: cost.amount must be a number');
             }
 
-            Assert::requiredString(
-                $cost,
-                'currency',
-                'Invalid usage_update update: cost.currency must be a string',
-            );
+            Assert::requiredString($cost, 'currency', 'Invalid usage_update update: cost.currency must be a string');
         }
 
         return new self($sessionId, $used, $size, $cost);
