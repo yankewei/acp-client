@@ -20,21 +20,9 @@ final class WriteTextFileRequest
     public static function fromArray(array $data): self
     {
         return new self(
-            Assert::requiredString(
-                $data,
-                'sessionId',
-                'Invalid fs/write_text_file params: sessionId must be a string',
-            ),
-            Assert::requiredString(
-                $data,
-                'path',
-                'Invalid fs/write_text_file params: path must be a string',
-            ),
-            Assert::requiredString(
-                $data,
-                'content',
-                'Invalid fs/write_text_file params: content must be a string',
-            ),
+            Assert::requiredString($data, 'sessionId', 'Invalid fs/write_text_file params: sessionId must be a string'),
+            Assert::requiredString($data, 'path', 'Invalid fs/write_text_file params: path must be a string'),
+            Assert::requiredString($data, 'content', 'Invalid fs/write_text_file params: content must be a string'),
         );
     }
 

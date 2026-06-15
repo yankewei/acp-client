@@ -21,24 +21,10 @@ final class ReadTextFileRequest
     public static function fromArray(array $data): self
     {
         return new self(
-            Assert::requiredString(
-                $data,
-                'sessionId',
-                'Invalid fs/read_text_file params: sessionId must be a string',
-            ),
-            Assert::requiredString(
-                $data,
-                'path',
-                'Invalid fs/read_text_file params: path must be a string',
-            ),
-            Assert::optionalInt(
-                $data['line'] ?? null,
-                'Invalid fs/read_text_file params: line must be an integer',
-            ),
-            Assert::optionalInt(
-                $data['limit'] ?? null,
-                'Invalid fs/read_text_file params: limit must be an integer',
-            ),
+            Assert::requiredString($data, 'sessionId', 'Invalid fs/read_text_file params: sessionId must be a string'),
+            Assert::requiredString($data, 'path', 'Invalid fs/read_text_file params: path must be a string'),
+            Assert::optionalInt($data['line'] ?? null, 'Invalid fs/read_text_file params: line must be an integer'),
+            Assert::optionalInt($data['limit'] ?? null, 'Invalid fs/read_text_file params: limit must be an integer'),
         );
     }
 
