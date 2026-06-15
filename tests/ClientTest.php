@@ -8,6 +8,10 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
 use Yankewei\AcpClient\Client;
+use Yankewei\AcpClient\Dto\FileSystem\ReadTextFileRequest;
+use Yankewei\AcpClient\Dto\FileSystem\ReadTextFileResult;
+use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileRequest;
+use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileResult;
 use Yankewei\AcpClient\Dto\RequestPermission;
 use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
 use Yankewei\AcpClient\Event\Notification;
@@ -1615,6 +1619,214 @@ final class ClientTest extends TestCase
         $client->onRequestPermission($handler);
         $client->offRequestPermission($handler);
         $client->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame(-32_601, self::errorOf($response)['code']);
+    }
+
+    public function testOnReadTextFileRespondsWithResultDto(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/read_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+                'line' => 10,
+                'limit' => 50,
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onReadTextFile(static function (ReadTextFileRequest $request): ReadTextFileResult {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('/repo/a.php', $request->getPath());
+            self::assertSame(10, $request->getLine());
+            self::assertSame(50, $request->getLimit());
+
+            return new ReadTextFileResult('contents');
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('fs-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame(['content' => 'contents'], $response['result']);
+    }
+
+    public function testOnReadTextFileWrapsStringResult(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/read_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onReadTextFile(static fn(): string => 'plain contents');
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame(['content' => 'plain contents'], $response['result']);
+    }
+
+    public function testOnReadTextFileReturnsInvalidParamsForMalformedRequest(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/read_text_file',
+            'params' => ['sessionId' => 'sess_1'],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onReadTextFile(static fn(): string => 'ignored');
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame(-32_602, self::errorOf($response)['code']);
+    }
+
+    public function testOnWriteTextFileRespondsWithEmptyResult(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/write_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+                'content' => 'hello',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onWriteTextFile(static function (WriteTextFileRequest $request): void {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('/repo/a.php', $request->getPath());
+            self::assertSame('hello', $request->getContent());
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('fs-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame([], $response['result']);
+    }
+
+    public function testOnWriteTextFileRespondsWithResultDto(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/write_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+                'content' => 'hello',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onWriteTextFile(static fn(): WriteTextFileResult => new WriteTextFileResult());
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame([], $response['result']);
+    }
+
+    public function testReadTextFileHandlerTakesPrecedenceOverGenericHandler(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/read_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onRequest('fs/read_text_file', static fn(): string => 'generic');
+        $client->onReadTextFile(static fn(): ReadTextFileResult => new ReadTextFileResult('typed'));
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame(['content' => 'typed'], $response['result']);
+    }
+
+    public function testReadTextFileHandlerCanBeRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'fs-1',
+            'method' => 'fs/read_text_file',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'path' => '/repo/a.php',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $handler = static fn(): ReadTextFileResult => new ReadTextFileResult('contents');
+        $client->onReadTextFile($handler);
+        $client->offReadTextFile($handler);
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
