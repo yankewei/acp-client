@@ -14,8 +14,8 @@ final class SessionInfoUpdateTest extends TestCase
     {
         $update = SessionInfoUpdate::fromUpdate('sess_1', ['sessionUpdate' => 'session_info_update']);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('session_info_update', $update->getUpdateType());
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('session_info_update', $update->getUpdateType());
     }
 }

@@ -33,30 +33,30 @@ final class ToolCallUpdateTest extends TestCase
             'rawOutput' => ['content' => 'hello'],
         ]);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('tool_call', $update->getUpdateType());
-        self::assertSame('call_1', $update->getToolCallId());
-        self::assertSame('Read file', $update->getTitle());
-        self::assertSame('read', $update->getKind());
-        self::assertSame('completed', $update->getStatus());
-        self::assertCount(2, $update->getContentItems());
-        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[0]);
-        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[1]);
-        self::assertSame(
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('tool_call', $update->getUpdateType());
+        static::assertSame('call_1', $update->getToolCallId());
+        static::assertSame('Read file', $update->getTitle());
+        static::assertSame('read', $update->getKind());
+        static::assertSame('completed', $update->getStatus());
+        static::assertCount(2, $update->getContentItems());
+        static::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[0]);
+        static::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[1]);
+        static::assertSame(
             [
                 ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'Line 1']],
                 ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'Line 2']],
             ],
             $update->getContent(),
         );
-        self::assertCount(1, $update->getLocations());
+        static::assertCount(1, $update->getLocations());
         $loc = $update->getLocations()[0];
-        self::assertInstanceOf(ToolCallLocation::class, $loc);
-        self::assertSame('/tmp/foo.txt', $loc->getPath());
-        self::assertSame(42, $loc->getLine());
-        self::assertSame(['path' => '/tmp/foo.txt'], $update->getRawInput());
-        self::assertSame(['content' => 'hello'], $update->getRawOutput());
+        static::assertInstanceOf(ToolCallLocation::class, $loc);
+        static::assertSame('/tmp/foo.txt', $loc->getPath());
+        static::assertSame(42, $loc->getLine());
+        static::assertSame(['path' => '/tmp/foo.txt'], $update->getRawInput());
+        static::assertSame(['content' => 'hello'], $update->getRawOutput());
     }
 
     public function testParsesDiffContent(): void
@@ -77,12 +77,12 @@ final class ToolCallUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertCount(1, $update->getContentItems());
+        static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
-        self::assertInstanceOf(DiffToolCallContent::class, $item);
-        self::assertSame('/home/user/project/config.json', $item->getPath());
-        self::assertSame('{"debug": true}', $item->getNewText());
-        self::assertSame('{"debug": false}', $item->getOldText());
+        static::assertInstanceOf(DiffToolCallContent::class, $item);
+        static::assertSame('/home/user/project/config.json', $item->getPath());
+        static::assertSame('{"debug": true}', $item->getNewText());
+        static::assertSame('{"debug": false}', $item->getOldText());
     }
 
     public function testParsesTerminalContent(): void
@@ -98,10 +98,10 @@ final class ToolCallUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertCount(1, $update->getContentItems());
+        static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
-        self::assertInstanceOf(TerminalToolCallContent::class, $item);
-        self::assertSame('term_xyz789', $item->getTerminalId());
+        static::assertInstanceOf(TerminalToolCallContent::class, $item);
+        static::assertSame('term_xyz789', $item->getTerminalId());
     }
 
     public function testParsesContentBlockWrapper(): void
@@ -115,11 +115,11 @@ final class ToolCallUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertCount(1, $update->getContentItems());
+        static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
-        self::assertInstanceOf(ContentToolCallContent::class, $item);
-        self::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
-        self::assertSame('Analysis complete', $item->getContentBlock()->getText());
+        static::assertInstanceOf(ContentToolCallContent::class, $item);
+        static::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
+        static::assertSame('Analysis complete', $item->getContentBlock()->getText());
     }
 
     public function testParsesLocationWithoutLine(): void
@@ -132,8 +132,8 @@ final class ToolCallUpdateTest extends TestCase
         ]);
 
         $loc = $update->getLocations()[0];
-        self::assertSame('/tmp/foo.txt', $loc->getPath());
-        self::assertNull($loc->getLine());
+        static::assertSame('/tmp/foo.txt', $loc->getPath());
+        static::assertNull($loc->getLine());
     }
 
     public function testDefaultsForMissingKindAndStatus(): void
@@ -144,12 +144,12 @@ final class ToolCallUpdateTest extends TestCase
             'title' => 'Unknown action',
         ]);
 
-        self::assertSame('other', $update->getKind());
-        self::assertSame('pending', $update->getStatus());
-        self::assertSame([], $update->getContent());
-        self::assertSame([], $update->getLocations());
-        self::assertNull($update->getRawInput());
-        self::assertNull($update->getRawOutput());
+        static::assertSame('other', $update->getKind());
+        static::assertSame('pending', $update->getStatus());
+        static::assertSame([], $update->getContent());
+        static::assertSame([], $update->getLocations());
+        static::assertNull($update->getRawInput());
+        static::assertNull($update->getRawOutput());
     }
 
     public function testRejectsWrongDiscriminator(): void

@@ -26,7 +26,7 @@ final class SessionListResultTest extends TestCase
             'nextCursor' => 'cursor',
         ]);
 
-        self::assertSame(
+        static::assertSame(
             [
                 [
                     'sessionId' => 'sess_1',
@@ -41,22 +41,22 @@ final class SessionListResultTest extends TestCase
         );
 
         $sessionInfos = $result->getSessionInfos();
-        self::assertCount(1, $sessionInfos);
-        self::assertSame('sess_1', $sessionInfos[0]->getSessionId());
-        self::assertSame('/repo', $sessionInfos[0]->getCwd());
-        self::assertSame(['/shared'], $sessionInfos[0]->getAdditionalDirectories());
-        self::assertSame('Build list support', $sessionInfos[0]->getTitle());
-        self::assertSame('2026-06-13T00:00:00Z', $sessionInfos[0]->getUpdatedAt());
-        self::assertSame(['messageCount' => 3], $sessionInfos[0]->getMeta());
-        self::assertSame('cursor', $result->getNextCursor());
+        static::assertCount(1, $sessionInfos);
+        static::assertSame('sess_1', $sessionInfos[0]->getSessionId());
+        static::assertSame('/repo', $sessionInfos[0]->getCwd());
+        static::assertSame(['/shared'], $sessionInfos[0]->getAdditionalDirectories());
+        static::assertSame('Build list support', $sessionInfos[0]->getTitle());
+        static::assertSame('2026-06-13T00:00:00Z', $sessionInfos[0]->getUpdatedAt());
+        static::assertSame(['messageCount' => 3], $sessionInfos[0]->getMeta());
+        static::assertSame('cursor', $result->getNextCursor());
     }
 
     public function testFromArrayAllowsEmptySessions(): void
     {
         $result = SessionListResult::fromArray(['sessions' => []]);
 
-        self::assertSame([], $result->getSessions());
-        self::assertNull($result->getNextCursor());
+        static::assertSame([], $result->getSessions());
+        static::assertNull($result->getNextCursor());
     }
 
     public function testFromArrayRequiresSessions(): void

@@ -15,12 +15,12 @@ final class ResourceContentBlockTest extends TestCase
     {
         $block = new ResourceContentBlock('file:///a.php', 'contents', null, 'text/x-php');
 
-        self::assertSame('resource', $block->getType());
-        self::assertSame('file:///a.php', $block->getUri());
-        self::assertSame('contents', $block->getText());
-        self::assertNull($block->getBlob());
-        self::assertSame('text/x-php', $block->getMimeType());
-        self::assertSame(
+        static::assertSame('resource', $block->getType());
+        static::assertSame('file:///a.php', $block->getUri());
+        static::assertSame('contents', $block->getText());
+        static::assertNull($block->getBlob());
+        static::assertSame('text/x-php', $block->getMimeType());
+        static::assertSame(
             [
                 'type' => 'resource',
                 'resource' => [
@@ -37,9 +37,9 @@ final class ResourceContentBlockTest extends TestCase
     {
         $block = new ResourceContentBlock('file:///a.bin', null, 'base64', 'application/octet-stream');
 
-        self::assertNull($block->getText());
-        self::assertSame('base64', $block->getBlob());
-        self::assertSame(
+        static::assertNull($block->getText());
+        static::assertSame('base64', $block->getBlob());
+        static::assertSame(
             [
                 'type' => 'resource',
                 'resource' => [
@@ -56,7 +56,7 @@ final class ResourceContentBlockTest extends TestCase
     {
         $block = ResourceContentBlock::resourceFromArray(['uri' => 'file:///a.php', 'text' => 'contents']);
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'resource', 'resource' => ['uri' => 'file:///a.php', 'text' => 'contents']],
             $block->toArray(),
         );
@@ -66,7 +66,7 @@ final class ResourceContentBlockTest extends TestCase
     {
         $block = new ResourceContentBlock('file:///a.php', 'contents', null, null, new Annotations([]));
 
-        self::assertSame(
+        static::assertSame(
             [
                 'type' => 'resource',
                 'resource' => ['uri' => 'file:///a.php', 'text' => 'contents'],

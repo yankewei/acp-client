@@ -13,45 +13,45 @@ final class ToolCallLocationTest extends TestCase
     public function testGetPath(): void
     {
         $loc = new ToolCallLocation('/tmp/foo.txt');
-        self::assertSame('/tmp/foo.txt', $loc->getPath());
+        static::assertSame('/tmp/foo.txt', $loc->getPath());
     }
 
     public function testGetLine(): void
     {
         $loc = new ToolCallLocation('/tmp/foo.txt', 42);
-        self::assertSame(42, $loc->getLine());
+        static::assertSame(42, $loc->getLine());
     }
 
     public function testLineDefaultsToNull(): void
     {
         $loc = new ToolCallLocation('/tmp/foo.txt');
-        self::assertNull($loc->getLine());
+        static::assertNull($loc->getLine());
     }
 
     public function testToArrayWithLine(): void
     {
         $loc = new ToolCallLocation('/tmp/foo.txt', 42);
-        self::assertSame(['path' => '/tmp/foo.txt', 'line' => 42], $loc->toArray());
+        static::assertSame(['path' => '/tmp/foo.txt', 'line' => 42], $loc->toArray());
     }
 
     public function testToArrayWithoutLine(): void
     {
         $loc = new ToolCallLocation('/tmp/foo.txt');
-        self::assertSame(['path' => '/tmp/foo.txt'], $loc->toArray());
+        static::assertSame(['path' => '/tmp/foo.txt'], $loc->toArray());
     }
 
     public function testFromArrayWithLine(): void
     {
         $loc = ToolCallLocation::fromArray(['path' => '/tmp/foo.txt', 'line' => 42]);
-        self::assertSame('/tmp/foo.txt', $loc->getPath());
-        self::assertSame(42, $loc->getLine());
+        static::assertSame('/tmp/foo.txt', $loc->getPath());
+        static::assertSame(42, $loc->getLine());
     }
 
     public function testFromArrayWithoutLine(): void
     {
         $loc = ToolCallLocation::fromArray(['path' => '/tmp/foo.txt']);
-        self::assertSame('/tmp/foo.txt', $loc->getPath());
-        self::assertNull($loc->getLine());
+        static::assertSame('/tmp/foo.txt', $loc->getPath());
+        static::assertNull($loc->getLine());
     }
 
     public function testRejectsMissingPath(): void

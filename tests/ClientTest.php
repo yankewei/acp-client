@@ -89,13 +89,13 @@ final class ClientTest extends TestCase
 
         $result = $client->call('initialize');
 
-        self::assertSame(['status' => 'ok'], $result);
-        self::assertCount(1, $transport->sent);
+        static::assertSame(['status' => 'ok'], $result);
+        static::assertCount(1, $transport->sent);
 
         $sent = self::decode($transport->sent[0]);
-        self::assertSame('2.0', $sent['jsonrpc']);
-        self::assertSame('initialize', $sent['method']);
-        self::assertIsInt($sent['id']);
+        static::assertSame('2.0', $sent['jsonrpc']);
+        static::assertSame('initialize', $sent['method']);
+        static::assertIsInt($sent['id']);
     }
 
     public function testInitializeSendsDefaultAcpParams(): void
@@ -113,23 +113,23 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $result = $client->initialize();
-        self::assertSame(1, $result->getProtocolVersion());
-        self::assertSame([], $result->getAgentCapabilities());
+        static::assertSame(1, $result->getProtocolVersion());
+        static::assertSame([], $result->getAgentCapabilities());
 
         $sent = self::decode($transport->sent[0]);
-        self::assertSame('initialize', $sent['method']);
+        static::assertSame('initialize', $sent['method']);
 
         $params = self::paramsOf($sent);
-        self::assertSame(1, $params['protocolVersion']);
+        static::assertSame(1, $params['protocolVersion']);
 
         $clientCapabilities = self::getArray($params, 'clientCapabilities');
         $fs = self::getArray($clientCapabilities, 'fs');
-        self::assertFalse($fs['readTextFile']);
-        self::assertFalse($fs['writeTextFile']);
-        self::assertFalse($clientCapabilities['terminal']);
+        static::assertFalse($fs['readTextFile']);
+        static::assertFalse($fs['writeTextFile']);
+        static::assertFalse($clientCapabilities['terminal']);
 
         $clientInfo = self::getArray($params, 'clientInfo');
-        self::assertSame('yankewei/acp-client', $clientInfo['name']);
+        static::assertSame('yankewei/acp-client', $clientInfo['name']);
     }
 
     public function testInitializeAllowsParamOverrides(): void
@@ -158,11 +158,11 @@ final class ClientTest extends TestCase
 
         $params = self::paramsOf($sent);
         $clientCapabilities = self::getArray($params, 'clientCapabilities');
-        self::assertTrue($clientCapabilities['terminal']);
+        static::assertTrue($clientCapabilities['terminal']);
 
         $clientInfo = self::getArray($params, 'clientInfo');
-        self::assertSame('custom-client', $clientInfo['name']);
-        self::assertSame('ACP Client for PHP', $clientInfo['title']);
+        static::assertSame('custom-client', $clientInfo['name']);
+        static::assertSame('ACP Client for PHP', $clientInfo['title']);
     }
 
     public function testAuthenticateCallsAcpMethod(): void
@@ -170,11 +170,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['ok' => true]);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['ok' => true], $client->authenticate('login'));
+        static::assertSame(['ok' => true], $client->authenticate('login'));
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('authenticate', $sent['method']);
-        self::assertSame(['methodId' => 'login'], $sent['params']);
+        static::assertSame('authenticate', $sent['method']);
+        static::assertSame(['methodId' => 'login'], $sent['params']);
     }
 
     public function testStrictProtocolAuthenticatesAdvertisedMethod(): void
@@ -203,11 +203,11 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, true);
         $client->initialize();
 
-        self::assertSame([], $client->authenticate('login'));
+        static::assertSame([], $client->authenticate('login'));
 
         $sent = self::decode($transport->sent[1]);
-        self::assertSame('authenticate', $sent['method']);
-        self::assertSame(['methodId' => 'login'], $sent['params']);
+        static::assertSame('authenticate', $sent['method']);
+        static::assertSame(['methodId' => 'login'], $sent['params']);
     }
 
     public function testStrictProtocolRejectsUnadvertisedAuthMethod(): void
@@ -237,11 +237,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame([], $client->logout());
+        static::assertSame([], $client->logout());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('logout', $sent['method']);
-        self::assertSame([], $sent['params']);
+        static::assertSame('logout', $sent['method']);
+        static::assertSame([], $sent['params']);
     }
 
     public function testSessionNewCallsAcpMethod(): void
@@ -250,13 +250,13 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $session = $client->sessionNew('/repo', [['name' => 'fs']], ['/shared']);
-        self::assertSame('sess_1', $session->getSessionId());
+        static::assertSame('sess_1', $session->getSessionId());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/new', $sent['method']);
-        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
-        self::assertSame([['name' => 'fs']], self::paramsOf($sent)['mcpServers']);
-        self::assertSame(['/shared'], self::paramsOf($sent)['additionalDirectories']);
+        static::assertSame('session/new', $sent['method']);
+        static::assertSame('/repo', self::paramsOf($sent)['cwd']);
+        static::assertSame([['name' => 'fs']], self::paramsOf($sent)['mcpServers']);
+        static::assertSame(['/shared'], self::paramsOf($sent)['additionalDirectories']);
     }
 
     public function testSessionLoadCallsAcpMethod(): void
@@ -264,14 +264,14 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(null);
         $client = new Client($transport, 1.0, false);
 
-        self::assertNull($client->sessionLoad('sess_1', '/repo'));
+        static::assertNull($client->sessionLoad('sess_1', '/repo'));
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/load', $sent['method']);
-        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
-        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
-        self::assertSame([], self::paramsOf($sent)['mcpServers']);
-        self::assertArrayNotHasKey('additionalDirectories', self::paramsOf($sent));
+        static::assertSame('session/load', $sent['method']);
+        static::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        static::assertSame('/repo', self::paramsOf($sent)['cwd']);
+        static::assertSame([], self::paramsOf($sent)['mcpServers']);
+        static::assertArrayNotHasKey('additionalDirectories', self::paramsOf($sent));
     }
 
     public function testSessionResumeCallsAcpMethod(): void
@@ -280,12 +280,12 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $session = $client->sessionResume('sess_1', '/repo');
-        self::assertNull($session->getSessionId());
+        static::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/resume', $sent['method']);
-        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
-        self::assertSame('/repo', self::paramsOf($sent)['cwd']);
+        static::assertSame('session/resume', $sent['method']);
+        static::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        static::assertSame('/repo', self::paramsOf($sent)['cwd']);
     }
 
     public function testSessionCloseCallsAcpMethod(): void
@@ -294,11 +294,11 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $session = $client->sessionClose('sess_1');
-        self::assertNull($session->getSessionId());
+        static::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/close', $sent['method']);
-        self::assertSame(['sessionId' => 'sess_1'], $sent['params']);
+        static::assertSame('session/close', $sent['method']);
+        static::assertSame(['sessionId' => 'sess_1'], $sent['params']);
     }
 
     public function testStrictProtocolRequiresInitializeBeforeSessionSetup(): void
@@ -373,7 +373,7 @@ final class ClientTest extends TestCase
             ['/shared'],
         );
 
-        self::assertSame('sess_1', $session->getSessionId());
+        static::assertSame('sess_1', $session->getSessionId());
     }
 
     public function testStrictProtocolRejectsRelativeCwd(): void
@@ -503,12 +503,12 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $result = $client->sessionList('/repo', 'cursor');
-        self::assertSame([], $result->getSessions());
-        self::assertSame('next', $result->getNextCursor());
+        static::assertSame([], $result->getSessions());
+        static::assertSame('next', $result->getNextCursor());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/list', $sent['method']);
-        self::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
+        static::assertSame('session/list', $sent['method']);
+        static::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
     }
 
     public function testStrictProtocolRequiresInitializeBeforeSessionList(): void
@@ -578,11 +578,11 @@ final class ClientTest extends TestCase
         $client->initialize();
         $result = $client->sessionList('/repo', 'cursor');
 
-        self::assertSame('sess_1', $result->getSessionInfos()[0]->getSessionId());
+        static::assertSame('sess_1', $result->getSessionInfos()[0]->getSessionId());
 
         $sent = self::decode($transport->sent[1]);
-        self::assertSame('session/list', $sent['method']);
-        self::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
+        static::assertSame('session/list', $sent['method']);
+        static::assertSame(['cwd' => '/repo', 'cursor' => 'cursor'], $sent['params']);
     }
 
     public function testSessionDeleteCallsAcpMethod(): void
@@ -590,11 +590,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame([], $client->sessionDelete('sess_1'));
+        static::assertSame([], $client->sessionDelete('sess_1'));
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/delete', $sent['method']);
-        self::assertSame(['sessionId' => 'sess_1'], $sent['params']);
+        static::assertSame('session/delete', $sent['method']);
+        static::assertSame(['sessionId' => 'sess_1'], $sent['params']);
     }
 
     public function testStrictProtocolRequiresInitializeBeforeSessionDelete(): void
@@ -625,12 +625,12 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $result = $client->sessionPrompt('sess_1', 'Hello');
-        self::assertSame('end_turn', $result->getStopReason());
+        static::assertSame('end_turn', $result->getStopReason());
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/prompt', $sent['method']);
-        self::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
-        self::assertSame([['type' => 'text', 'text' => 'Hello']], self::paramsOf($sent)['prompt']);
+        static::assertSame('session/prompt', $sent['method']);
+        static::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        static::assertSame([['type' => 'text', 'text' => 'Hello']], self::paramsOf($sent)['prompt']);
     }
 
     public function testSessionPromptAcceptsContentBlocks(): void
@@ -645,7 +645,7 @@ final class ClientTest extends TestCase
         $client->sessionPrompt('sess_1', $prompt);
 
         $sent = $this->sentMessage($transport);
-        self::assertSame($prompt, self::paramsOf($sent)['prompt']);
+        static::assertSame($prompt, self::paramsOf($sent)['prompt']);
     }
 
     public function testStrictProtocolRequiresInitializeBeforeSessionPrompt(): void
@@ -682,7 +682,7 @@ final class ClientTest extends TestCase
         ]);
 
         $sent = self::decode($transport->sent[1]);
-        self::assertSame('session/prompt', $sent['method']);
+        static::assertSame('session/prompt', $sent['method']);
     }
 
     public function testStrictProtocolAcceptsResourceLinkContentBlock(): void
@@ -709,7 +709,7 @@ final class ClientTest extends TestCase
         ]);
 
         $sent = self::decode($transport->sent[1]);
-        self::assertSame('session/prompt', $sent['method']);
+        static::assertSame('session/prompt', $sent['method']);
     }
 
     public function testStrictProtocolRejectsPromptContentWithoutCapability(): void
@@ -901,9 +901,9 @@ final class ClientTest extends TestCase
         $client->sessionCancel('sess_1');
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/cancel', $sent['method']);
-        self::assertArrayNotHasKey('id', $sent);
-        self::assertSame(['sessionId' => 'sess_1'], $sent['params']);
+        static::assertSame('session/cancel', $sent['method']);
+        static::assertArrayNotHasKey('id', $sent);
+        static::assertSame(['sessionId' => 'sess_1'], $sent['params']);
     }
 
     public function testSetConfigOptionCallsAcpMethod(): void
@@ -911,11 +911,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['configOptions' => []]);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['configOptions' => []], $client->setConfigOption('sess_1', 'mode', 'code'));
+        static::assertSame(['configOptions' => []], $client->setConfigOption('sess_1', 'mode', 'code'));
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/set_config_option', $sent['method']);
-        self::assertSame(['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'], $sent['params']);
+        static::assertSame('session/set_config_option', $sent['method']);
+        static::assertSame(['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'], $sent['params']);
     }
 
     public function testSetModeCallsAcpMethod(): void
@@ -923,11 +923,11 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['currentModeId' => 'code']);
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['currentModeId' => 'code'], $client->setMode('sess_1', 'code'));
+        static::assertSame(['currentModeId' => 'code'], $client->setMode('sess_1', 'code'));
 
         $sent = $this->sentMessage($transport);
-        self::assertSame('session/set_mode', $sent['method']);
-        self::assertSame(['sessionId' => 'sess_1', 'modeId' => 'code'], $sent['params']);
+        static::assertSame('session/set_mode', $sent['method']);
+        static::assertSame(['sessionId' => 'sess_1', 'modeId' => 'code'], $sent['params']);
     }
 
     public function testCallReturnsScalarResult(): void
@@ -941,7 +941,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame('pong', $client->call('ping'));
+        static::assertSame('pong', $client->call('ping'));
     }
 
     public function testCallSkipsServerNotification(): void
@@ -960,7 +960,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['status' => 'ok'], $client->call('initialize'));
+        static::assertSame(['status' => 'ok'], $client->call('initialize'));
     }
 
     public function testCallKeepsUnmatchedResponseForLater(): void
@@ -979,8 +979,8 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['first' => true], $client->call('first'));
-        self::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->call('first'));
+        static::assertSame(['second' => true], $client->call('second'));
     }
 
     public function testCallThrowsOnJsonRpcError(): void
@@ -1039,12 +1039,12 @@ final class ClientTest extends TestCase
 
         $client->notify('agent/cancel', ['taskId' => 'abc']);
 
-        self::assertCount(1, $transport->sent);
+        static::assertCount(1, $transport->sent);
 
         $sent = self::decode($transport->sent[0]);
-        self::assertArrayNotHasKey('id', $sent);
-        self::assertSame('agent/cancel', $sent['method']);
-        self::assertSame(['taskId' => 'abc'], $sent['params']);
+        static::assertArrayNotHasKey('id', $sent);
+        static::assertSame('agent/cancel', $sent['method']);
+        static::assertSame(['taskId' => 'abc'], $sent['params']);
     }
 
     public function testStdioTransportTalksToProcess(): void
@@ -1057,7 +1057,7 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         try {
-            self::assertSame(
+            static::assertSame(
                 ['method' => 'agent/run', 'params' => ['task' => 'test']],
                 $client->call('agent/run', ['task' => 'test']),
             );
@@ -1076,7 +1076,7 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         try {
-            self::assertSame(['ok' => true], $client->call('initialize'));
+            static::assertSame(['ok' => true], $client->call('initialize'));
         } finally {
             $transport->close();
         }
@@ -1127,8 +1127,8 @@ final class ClientTest extends TestCase
 
         $result = $client->call('initialize');
 
-        self::assertSame(['ok' => true], $result);
-        self::assertSame(
+        static::assertSame(['ok' => true], $result);
+        static::assertSame(
             [
                 [
                     'method' => 'session/update',
@@ -1167,7 +1167,7 @@ final class ClientTest extends TestCase
 
         $client->call('initialize');
 
-        self::assertSame(['session/update'], $received);
+        static::assertSame(['session/update'], $received);
     }
 
     public function testMultipleListenersAllFire(): void
@@ -1197,8 +1197,8 @@ final class ClientTest extends TestCase
 
         $client->call('initialize');
 
-        self::assertSame(['session/update'], $first);
-        self::assertSame(['running'], $second);
+        static::assertSame(['session/update'], $first);
+        static::assertSame(['running'], $second);
     }
 
     public function testNotificationsDoNotInterfereWithResponseMatching(): void
@@ -1222,8 +1222,8 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        self::assertSame(['first' => true], $client->call('first'));
-        self::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->call('first'));
+        static::assertSame(['second' => true], $client->call('second'));
     }
 
     public function testListenerCanBeRemoved(): void
@@ -1252,7 +1252,7 @@ final class ClientTest extends TestCase
 
         $client->call('initialize');
 
-        self::assertSame([], $received);
+        static::assertSame([], $received);
     }
 
     public function testRegisteredRequestHandlerResponds(): void
@@ -1280,13 +1280,13 @@ final class ClientTest extends TestCase
 
         $result = $client->call('initialize');
 
-        self::assertSame(['ok' => true], $result);
-        self::assertCount(2, $transport->sent);
+        static::assertSame(['ok' => true], $result);
+        static::assertCount(2, $transport->sent);
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame('req-1', $response['id']);
-        self::assertArrayNotHasKey('error', $response);
-        self::assertSame('contents of /repo/a.php', $response['result']);
+        static::assertSame('req-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame('contents of /repo/a.php', $response['result']);
     }
 
     public function testUnknownServerRequestReturnsMethodNotFound(): void
@@ -1308,12 +1308,12 @@ final class ClientTest extends TestCase
 
         $result = $client->call('initialize');
 
-        self::assertSame(['ok' => true], $result);
+        static::assertSame(['ok' => true], $result);
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame('req-1', $response['id']);
-        self::assertArrayHasKey('error', $response);
-        self::assertSame(-32_601, self::errorOf($response)['code']);
+        static::assertSame('req-1', $response['id']);
+        static::assertArrayHasKey('error', $response);
+        static::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testAnyRequestHandlerRespondsToUnknownServerRequest(): void
@@ -1337,12 +1337,12 @@ final class ClientTest extends TestCase
             'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
         ]);
 
-        self::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame('req-1', $response['id']);
-        self::assertArrayNotHasKey('error', $response);
-        self::assertSame(['method' => 'permission/request', 'answer' => 'approved'], $response['result']);
+        static::assertSame('req-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame(['method' => 'permission/request', 'answer' => 'approved'], $response['result']);
     }
 
     public function testMethodRequestHandlerTakesPrecedenceOverAnyRequestHandler(): void
@@ -1367,7 +1367,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(['answer' => 'specific'], $response['result']);
+        static::assertSame(['answer' => 'specific'], $response['result']);
     }
 
     public function testAnyRequestHandlerCanBeRemoved(): void
@@ -1394,7 +1394,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32_601, self::errorOf($response)['code']);
+        static::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testHandlerExceptionReturnsInternalError(): void
@@ -1420,11 +1420,11 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame('req-1', $response['id']);
-        self::assertArrayHasKey('error', $response);
+        static::assertSame('req-1', $response['id']);
+        static::assertArrayHasKey('error', $response);
         $error = self::errorOf($response);
-        self::assertSame(-32_603, $error['code']);
-        self::assertSame('disk failure', $error['message']);
+        static::assertSame(-32_603, $error['code']);
+        static::assertSame('disk failure', $error['message']);
     }
 
     public function testServerRequestDoesNotInterfereWithClientResponse(): void
@@ -1450,8 +1450,8 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
         $client->onRequest('fs/read_text_file', static fn(): string => 'file contents');
 
-        self::assertSame(['first' => true], $client->call('first'));
-        self::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->call('first'));
+        static::assertSame(['second' => true], $client->call('second'));
     }
 
     public function testRequestHandlerCanBeRemoved(): void
@@ -1478,7 +1478,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32_601, self::errorOf($response)['code']);
+        static::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testRequestPermissionHandlerRespondsWithSelectedOutcome(): void
@@ -1517,11 +1517,11 @@ final class ClientTest extends TestCase
             return RequestPermissionOutcome::selected('allow-once');
         });
 
-        self::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame('perm-1', $response['id']);
-        self::assertSame(
+        static::assertSame('perm-1', $response['id']);
+        static::assertSame(
             [
                 'outcome' => [
                     'outcome' => 'selected',
@@ -1569,17 +1569,17 @@ final class ClientTest extends TestCase
             return RequestPermissionOutcome::selected('allow-once');
         });
 
-        self::assertTrue($client->sessionPrompt('sess_1', 'Cancel this')->isCancelled());
+        static::assertTrue($client->sessionPrompt('sess_1', 'Cancel this')->isCancelled());
 
-        self::assertCount(3, $transport->sent);
+        static::assertCount(3, $transport->sent);
 
         $cancel = self::decode($transport->sent[1]);
-        self::assertSame('session/cancel', $cancel['method']);
-        self::assertArrayNotHasKey('id', $cancel);
+        static::assertSame('session/cancel', $cancel['method']);
+        static::assertArrayNotHasKey('id', $cancel);
 
         $permissionResponse = self::decode($transport->sent[2]);
-        self::assertSame('perm-1', $permissionResponse['id']);
-        self::assertSame(
+        static::assertSame('perm-1', $permissionResponse['id']);
+        static::assertSame(
             [
                 'outcome' => [
                     'outcome' => 'cancelled',
@@ -1617,7 +1617,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32_601, self::errorOf($response)['code']);
+        static::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     /**

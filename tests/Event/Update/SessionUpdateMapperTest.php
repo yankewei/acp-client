@@ -25,7 +25,7 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => ['sessionUpdate' => 'session_info_update'],
         ]);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testReturnsNullForUnknownSessionUpdateType(): void
@@ -35,14 +35,14 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => ['sessionUpdate' => 'unknown_update'],
         ]);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testReturnsNullWhenUpdateIsMissing(): void
     {
         $notification = new Notification('session/update', ['sessionId' => 'sess_1']);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testReturnsNullWhenUpdateIsList(): void
@@ -52,7 +52,7 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => ['agent_message_chunk'],
         ]);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testReturnsNullWhenSessionUpdateIsMissing(): void
@@ -62,7 +62,7 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => ['content' => ['type' => 'text', 'text' => 'Hi']],
         ]);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testReturnsNullWhenSessionUpdateIsNotString(): void
@@ -72,7 +72,7 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => ['sessionUpdate' => 123],
         ]);
 
-        self::assertNull(SessionUpdateMapper::fromNotification($notification));
+        static::assertNull(SessionUpdateMapper::fromNotification($notification));
     }
 
     public function testDispatchesSessionInfoUpdate(): void
@@ -84,10 +84,10 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertInstanceOf(SessionInfoUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('session_info_update', $update->getUpdateType());
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertInstanceOf(SessionInfoUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('session_info_update', $update->getUpdateType());
     }
 
     public function testDispatchesAgentMessageChunkUpdate(): void
@@ -103,9 +103,9 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(AgentMessageChunkUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('agent_message_chunk', $update->getUpdateType());
+        static::assertInstanceOf(AgentMessageChunkUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('agent_message_chunk', $update->getUpdateType());
     }
 
     public function testDispatchesToolCallUpdate(): void
@@ -121,9 +121,9 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(ToolCallUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('tool_call', $update->getUpdateType());
+        static::assertInstanceOf(ToolCallUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('tool_call', $update->getUpdateType());
     }
 
     public function testDispatchesToolCallStatusUpdate(): void
@@ -139,9 +139,9 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(ToolCallStatusUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('tool_call_update', $update->getUpdateType());
+        static::assertInstanceOf(ToolCallStatusUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('tool_call_update', $update->getUpdateType());
     }
 
     public function testDispatchesUsageUpdate(): void
@@ -157,9 +157,9 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(UsageUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('usage_update', $update->getUpdateType());
+        static::assertInstanceOf(UsageUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('usage_update', $update->getUpdateType());
     }
 
     public function testDispatchesPlanUpdate(): void
@@ -176,9 +176,9 @@ final class SessionUpdateMapperTest extends TestCase
 
         $update = SessionUpdateMapper::fromNotification($notification);
 
-        self::assertInstanceOf(PlanUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('plan', $update->getUpdateType());
+        static::assertInstanceOf(PlanUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('plan', $update->getUpdateType());
     }
 
     public function testRejectsMissingSessionId(): void

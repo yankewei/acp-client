@@ -15,7 +15,7 @@ final class ContentToolCallContentTest extends TestCase
         $block = new TextContentBlock('Hello');
         $content = new ContentToolCallContent($block);
 
-        self::assertSame('content', $content->getType());
+        static::assertSame('content', $content->getType());
     }
 
     public function testGetContentBlock(): void
@@ -23,7 +23,7 @@ final class ContentToolCallContentTest extends TestCase
         $block = new TextContentBlock('Hello');
         $content = new ContentToolCallContent($block);
 
-        self::assertSame($block, $content->getContentBlock());
+        static::assertSame($block, $content->getContentBlock());
     }
 
     public function testToArray(): void
@@ -31,7 +31,7 @@ final class ContentToolCallContentTest extends TestCase
         $block = new TextContentBlock('Hello');
         $content = new ContentToolCallContent($block);
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'Hello']],
             $content->toArray(),
         );

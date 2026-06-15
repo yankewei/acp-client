@@ -21,10 +21,10 @@ final class ToolCallContentFactoryTest extends TestCase
             'content' => ['type' => 'text', 'text' => 'Hello'],
         ]);
 
-        self::assertInstanceOf(ContentToolCallContent::class, $item);
-        self::assertSame('content', $item->getType());
-        self::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
-        self::assertSame('Hello', $item->getContentBlock()->getText());
+        static::assertInstanceOf(ContentToolCallContent::class, $item);
+        static::assertSame('content', $item->getType());
+        static::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
+        static::assertSame('Hello', $item->getContentBlock()->getText());
     }
 
     public function testCreatesDiffToolCallContent(): void
@@ -36,11 +36,11 @@ final class ToolCallContentFactoryTest extends TestCase
             'newText' => 'new',
         ]);
 
-        self::assertInstanceOf(DiffToolCallContent::class, $item);
-        self::assertSame('diff', $item->getType());
-        self::assertSame('/tmp/foo.txt', $item->getPath());
-        self::assertSame('old', $item->getOldText());
-        self::assertSame('new', $item->getNewText());
+        static::assertInstanceOf(DiffToolCallContent::class, $item);
+        static::assertSame('diff', $item->getType());
+        static::assertSame('/tmp/foo.txt', $item->getPath());
+        static::assertSame('old', $item->getOldText());
+        static::assertSame('new', $item->getNewText());
     }
 
     public function testCreatesDiffToolCallContentWithoutOldText(): void
@@ -51,8 +51,8 @@ final class ToolCallContentFactoryTest extends TestCase
             'newText' => 'new file content',
         ]);
 
-        self::assertInstanceOf(DiffToolCallContent::class, $item);
-        self::assertNull($item->getOldText());
+        static::assertInstanceOf(DiffToolCallContent::class, $item);
+        static::assertNull($item->getOldText());
     }
 
     public function testCreatesTerminalToolCallContent(): void
@@ -62,9 +62,9 @@ final class ToolCallContentFactoryTest extends TestCase
             'terminalId' => 'term_xyz789',
         ]);
 
-        self::assertInstanceOf(TerminalToolCallContent::class, $item);
-        self::assertSame('terminal', $item->getType());
-        self::assertSame('term_xyz789', $item->getTerminalId());
+        static::assertInstanceOf(TerminalToolCallContent::class, $item);
+        static::assertSame('terminal', $item->getType());
+        static::assertSame('term_xyz789', $item->getTerminalId());
     }
 
     public function testRejectsUnsupportedType(): void
@@ -90,14 +90,14 @@ final class ToolCallContentFactoryTest extends TestCase
             ['type' => 'terminal', 'terminalId' => 't1'],
         ]);
 
-        self::assertCount(2, $items);
-        self::assertInstanceOf(ContentToolCallContent::class, $items[0]);
-        self::assertInstanceOf(TerminalToolCallContent::class, $items[1]);
+        static::assertCount(2, $items);
+        static::assertInstanceOf(ContentToolCallContent::class, $items[0]);
+        static::assertInstanceOf(TerminalToolCallContent::class, $items[1]);
     }
 
     public function testFromArrayListEmpty(): void
     {
-        self::assertSame([], ToolCallContentFactory::fromArrayList([]));
+        static::assertSame([], ToolCallContentFactory::fromArrayList([]));
     }
 
     public function testRejectsNonListArray(): void

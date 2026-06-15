@@ -14,12 +14,12 @@ final class ImageContentBlockTest extends TestCase
     {
         $block = new ImageContentBlock('base64', 'image/png', 'https://example.com/img.png');
 
-        self::assertSame('image', $block->getType());
-        self::assertSame('base64', $block->getData());
-        self::assertSame('image/png', $block->getMimeType());
-        self::assertSame('https://example.com/img.png', $block->getUri());
-        self::assertNull($block->getAnnotations());
-        self::assertSame(
+        static::assertSame('image', $block->getType());
+        static::assertSame('base64', $block->getData());
+        static::assertSame('image/png', $block->getMimeType());
+        static::assertSame('https://example.com/img.png', $block->getUri());
+        static::assertNull($block->getAnnotations());
+        static::assertSame(
             [
                 'type' => 'image',
                 'data' => 'base64',
@@ -34,14 +34,14 @@ final class ImageContentBlockTest extends TestCase
     {
         $block = new ImageContentBlock('base64', 'image/png');
 
-        self::assertSame(['type' => 'image', 'data' => 'base64', 'mimeType' => 'image/png'], $block->toArray());
+        static::assertSame(['type' => 'image', 'data' => 'base64', 'mimeType' => 'image/png'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void
     {
         $block = new ImageContentBlock('base64', 'image/png', null, new Annotations([]));
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'image', 'data' => 'base64', 'mimeType' => 'image/png', 'annotations' => []],
             $block->toArray(),
         );

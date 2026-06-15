@@ -14,22 +14,22 @@ final class ResponseTest extends TestCase
     {
         $response = Response::fromJson('{"jsonrpc":"2.0","id":1,"result":{"ok":true}}');
 
-        self::assertSame(1, $response->getId());
-        self::assertFalse($response->hasError());
-        self::assertSame(['ok' => true], $response->getResult());
+        static::assertSame(1, $response->getId());
+        static::assertFalse($response->hasError());
+        static::assertSame(['ok' => true], $response->getResult());
     }
 
     public function testParseErrorResponse(): void
     {
         $response = Response::fromJson('{"jsonrpc":"2.0","id":2,"error":{"code":-32600,"message":"Invalid Request"}}');
 
-        self::assertSame(2, $response->getId());
-        self::assertTrue($response->hasError());
+        static::assertSame(2, $response->getId());
+        static::assertTrue($response->hasError());
 
         $error = $response->getError();
-        self::assertNotNull($error);
-        self::assertSame(-32_600, $error->getCode());
-        self::assertSame('Invalid Request', $error->getMessage());
+        static::assertNotNull($error);
+        static::assertSame(-32_600, $error->getCode());
+        static::assertSame('Invalid Request', $error->getMessage());
     }
 
     public function testParseInvalidJsonThrows(): void

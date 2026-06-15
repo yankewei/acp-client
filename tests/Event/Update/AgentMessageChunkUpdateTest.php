@@ -21,13 +21,13 @@ final class AgentMessageChunkUpdateTest extends TestCase
             'content' => ['type' => 'text', 'text' => 'Hello'],
         ]);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('agent_message_chunk', $update->getUpdateType());
-        self::assertSame('msg_1', $update->getMessageId());
-        self::assertInstanceOf(TextContentBlock::class, $update->getContentBlock());
-        self::assertInstanceOf(ContentBlockInterface::class, $update->getContentBlock());
-        self::assertSame(['type' => 'text', 'text' => 'Hello'], $update->getContent());
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('agent_message_chunk', $update->getUpdateType());
+        static::assertSame('msg_1', $update->getMessageId());
+        static::assertInstanceOf(TextContentBlock::class, $update->getContentBlock());
+        static::assertInstanceOf(ContentBlockInterface::class, $update->getContentBlock());
+        static::assertSame(['type' => 'text', 'text' => 'Hello'], $update->getContent());
     }
 
     public function testMessageIdIsOptional(): void
@@ -37,7 +37,7 @@ final class AgentMessageChunkUpdateTest extends TestCase
             'content' => ['type' => 'text', 'text' => 'Hello'],
         ]);
 
-        self::assertNull($update->getMessageId());
+        static::assertNull($update->getMessageId());
     }
 
     public function testRejectsWrongDiscriminator(): void

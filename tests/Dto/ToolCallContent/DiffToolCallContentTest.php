@@ -12,38 +12,38 @@ final class DiffToolCallContentTest extends TestCase
     public function testGetType(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content', 'old content');
-        self::assertSame('diff', $diff->getType());
+        static::assertSame('diff', $diff->getType());
     }
 
     public function testGetPath(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content');
-        self::assertSame('/tmp/foo.txt', $diff->getPath());
+        static::assertSame('/tmp/foo.txt', $diff->getPath());
     }
 
     public function testGetNewText(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content');
-        self::assertSame('new content', $diff->getNewText());
+        static::assertSame('new content', $diff->getNewText());
     }
 
     public function testGetOldText(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content', 'old content');
-        self::assertSame('old content', $diff->getOldText());
+        static::assertSame('old content', $diff->getOldText());
     }
 
     public function testOldTextDefaultsToNull(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content');
-        self::assertNull($diff->getOldText());
+        static::assertNull($diff->getOldText());
     }
 
     public function testToArrayWithOldText(): void
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new', 'old');
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'diff', 'path' => '/tmp/foo.txt', 'newText' => 'new', 'oldText' => 'old'],
             $diff->toArray(),
         );
@@ -53,6 +53,6 @@ final class DiffToolCallContentTest extends TestCase
     {
         $diff = new DiffToolCallContent('/tmp/foo.txt', 'new content');
 
-        self::assertSame(['type' => 'diff', 'path' => '/tmp/foo.txt', 'newText' => 'new content'], $diff->toArray());
+        static::assertSame(['type' => 'diff', 'path' => '/tmp/foo.txt', 'newText' => 'new content'], $diff->toArray());
     }
 }

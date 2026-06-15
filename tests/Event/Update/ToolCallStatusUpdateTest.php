@@ -26,15 +26,15 @@ final class ToolCallStatusUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('tool_call_update', $update->getUpdateType());
-        self::assertSame('call_1', $update->getToolCallId());
-        self::assertSame('in_progress', $update->getStatus());
-        self::assertCount(2, $update->getContentItems());
-        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[0]);
-        self::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[1]);
-        self::assertSame(
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('tool_call_update', $update->getUpdateType());
+        static::assertSame('call_1', $update->getToolCallId());
+        static::assertSame('in_progress', $update->getStatus());
+        static::assertCount(2, $update->getContentItems());
+        static::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[0]);
+        static::assertInstanceOf(ContentToolCallContent::class, $update->getContentItems()[1]);
+        static::assertSame(
             [
                 ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 1']],
                 ['type' => 'content', 'content' => ['type' => 'text', 'text' => 'chunk 2']],
@@ -58,12 +58,12 @@ final class ToolCallStatusUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertCount(1, $update->getContentItems());
+        static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
-        self::assertInstanceOf(DiffToolCallContent::class, $item);
-        self::assertSame('/src/main.py', $item->getPath());
-        self::assertSame('print("hello")', $item->getNewText());
-        self::assertNull($item->getOldText());
+        static::assertInstanceOf(DiffToolCallContent::class, $item);
+        static::assertSame('/src/main.py', $item->getPath());
+        static::assertSame('print("hello")', $item->getNewText());
+        static::assertNull($item->getOldText());
     }
 
     public function testParsesTerminalContent(): void
@@ -77,10 +77,10 @@ final class ToolCallStatusUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertCount(1, $update->getContentItems());
+        static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
-        self::assertInstanceOf(TerminalToolCallContent::class, $item);
-        self::assertSame('term_abc', $item->getTerminalId());
+        static::assertInstanceOf(TerminalToolCallContent::class, $item);
+        static::assertSame('term_abc', $item->getTerminalId());
     }
 
     public function testDefaultsForMissingStatusAndContent(): void
@@ -90,8 +90,8 @@ final class ToolCallStatusUpdateTest extends TestCase
             'toolCallId' => 'call_1',
         ]);
 
-        self::assertNull($update->getStatus());
-        self::assertSame([], $update->getContent());
+        static::assertNull($update->getStatus());
+        static::assertSame([], $update->getContent());
     }
 
     public function testRejectsWrongDiscriminator(): void

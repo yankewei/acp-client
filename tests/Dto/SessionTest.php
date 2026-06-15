@@ -13,8 +13,8 @@ final class SessionTest extends TestCase
     {
         $session = Session::fromArray(['sessionId' => 'sess_1']);
 
-        self::assertSame('sess_1', $session->getSessionId());
-        self::assertSame([], $session->getConfigOptions());
+        static::assertSame('sess_1', $session->getSessionId());
+        static::assertSame([], $session->getConfigOptions());
     }
 
     public function testFromArrayParsesConfigOptions(): void
@@ -26,14 +26,14 @@ final class SessionTest extends TestCase
             ],
         ]);
 
-        self::assertSame([['id' => 'mode', 'currentValue' => 'code']], $session->getConfigOptions());
+        static::assertSame([['id' => 'mode', 'currentValue' => 'code']], $session->getConfigOptions());
     }
 
     public function testFromArrayAllowsMissingFields(): void
     {
         $session = Session::fromArray(['ready' => true]);
 
-        self::assertNull($session->getSessionId());
-        self::assertSame([], $session->getConfigOptions());
+        static::assertNull($session->getSessionId());
+        static::assertSame([], $session->getConfigOptions());
     }
 }

@@ -14,18 +14,18 @@ final class AudioContentBlockTest extends TestCase
     {
         $block = new AudioContentBlock('base64', 'audio/wav');
 
-        self::assertSame('audio', $block->getType());
-        self::assertSame('base64', $block->getData());
-        self::assertSame('audio/wav', $block->getMimeType());
-        self::assertNull($block->getAnnotations());
-        self::assertSame(['type' => 'audio', 'data' => 'base64', 'mimeType' => 'audio/wav'], $block->toArray());
+        static::assertSame('audio', $block->getType());
+        static::assertSame('base64', $block->getData());
+        static::assertSame('audio/wav', $block->getMimeType());
+        static::assertNull($block->getAnnotations());
+        static::assertSame(['type' => 'audio', 'data' => 'base64', 'mimeType' => 'audio/wav'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void
     {
         $block = new AudioContentBlock('base64', 'audio/wav', new Annotations(['foo' => 'bar']));
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'audio', 'data' => 'base64', 'mimeType' => 'audio/wav', 'annotations' => ['foo' => 'bar']],
             $block->toArray(),
         );

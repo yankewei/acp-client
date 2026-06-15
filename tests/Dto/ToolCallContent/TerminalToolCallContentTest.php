@@ -12,19 +12,19 @@ final class TerminalToolCallContentTest extends TestCase
     public function testGetType(): void
     {
         $terminal = new TerminalToolCallContent('term_xyz789');
-        self::assertSame('terminal', $terminal->getType());
+        static::assertSame('terminal', $terminal->getType());
     }
 
     public function testGetTerminalId(): void
     {
         $terminal = new TerminalToolCallContent('term_xyz789');
-        self::assertSame('term_xyz789', $terminal->getTerminalId());
+        static::assertSame('term_xyz789', $terminal->getTerminalId());
     }
 
     public function testToArray(): void
     {
         $terminal = new TerminalToolCallContent('term_xyz789');
 
-        self::assertSame(['type' => 'terminal', 'terminalId' => 'term_xyz789'], $terminal->toArray());
+        static::assertSame(['type' => 'terminal', 'terminalId' => 'term_xyz789'], $terminal->toArray());
     }
 }

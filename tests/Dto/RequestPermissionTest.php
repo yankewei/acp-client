@@ -32,15 +32,15 @@ final class RequestPermissionTest extends TestCase
             ],
         ]);
 
-        self::assertSame('sess_1', $request->getSessionId());
-        self::assertSame('call_1', $request->getToolCallId());
-        self::assertSame(['toolCallId' => 'call_1', 'title' => 'Edit file'], $request->getToolCall());
+        static::assertSame('sess_1', $request->getSessionId());
+        static::assertSame('call_1', $request->getToolCallId());
+        static::assertSame(['toolCallId' => 'call_1', 'title' => 'Edit file'], $request->getToolCall());
 
         $options = $request->getOptions();
-        self::assertCount(2, $options);
-        self::assertSame('allow-once', $options[0]->getOptionId());
-        self::assertSame('Allow once', $options[0]->getName());
-        self::assertSame('allow_once', $options[0]->getKind());
+        static::assertCount(2, $options);
+        static::assertSame('allow-once', $options[0]->getOptionId());
+        static::assertSame('Allow once', $options[0]->getName());
+        static::assertSame('allow_once', $options[0]->getKind());
     }
 
     public function testRejectsMissingSessionId(): void

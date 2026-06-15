@@ -12,7 +12,7 @@ final class RequestPermissionOutcomeTest extends TestCase
 {
     public function testSelectedOutcome(): void
     {
-        self::assertSame(
+        static::assertSame(
             [
                 'outcome' => [
                     'outcome' => 'selected',
@@ -25,7 +25,7 @@ final class RequestPermissionOutcomeTest extends TestCase
 
     public function testCancelledOutcome(): void
     {
-        self::assertSame(
+        static::assertSame(
             [
                 'outcome' => [
                     'outcome' => 'cancelled',

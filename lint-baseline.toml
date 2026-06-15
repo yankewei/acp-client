@@ -110,12 +110,6 @@ count = 1
 
 [[issues]]
 file = "tests/ClientTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 120
-
-[[issues]]
-file = "tests/ClientTest.php"
 code = "inline-variable-return"
 message = "Variable assignment can be inlined into the return statement."
 count = 3
@@ -127,112 +121,10 @@ message = "Class has too many methods."
 count = 1
 
 [[issues]]
-file = "tests/Dto/ContentBlock/AnnotationsTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 4
-
-[[issues]]
-file = "tests/Dto/ContentBlock/AudioContentBlockTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 6
-
-[[issues]]
-file = "tests/Dto/ContentBlock/ContentBlockFactoryTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 20
-
-[[issues]]
 file = "tests/Dto/ContentBlock/ContentBlockFactoryTest.php"
 code = "too-many-methods"
 message = "Class has too many methods."
 count = 1
-
-[[issues]]
-file = "tests/Dto/ContentBlock/ImageContentBlockTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 8
-
-[[issues]]
-file = "tests/Dto/ContentBlock/ResourceContentBlockTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 11
-
-[[issues]]
-file = "tests/Dto/ContentBlock/ResourceLinkContentBlockTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 10
-
-[[issues]]
-file = "tests/Dto/ContentBlock/TextContentBlockTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 5
-
-[[issues]]
-file = "tests/Dto/InitializeResultTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 34
-
-[[issues]]
-file = "tests/Dto/PromptResultTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 8
-
-[[issues]]
-file = "tests/Dto/RequestPermissionOutcomeTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 2
-
-[[issues]]
-file = "tests/Dto/RequestPermissionTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 7
-
-[[issues]]
-file = "tests/Dto/SessionListResultTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 11
-
-[[issues]]
-file = "tests/Dto/SessionTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 5
-
-[[issues]]
-file = "tests/Dto/ToolCallContent/ContentToolCallContentTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 3
-
-[[issues]]
-file = "tests/Dto/ToolCallContent/DiffToolCallContentTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 7
-
-[[issues]]
-file = "tests/Dto/ToolCallContent/TerminalToolCallContentTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 3
-
-[[issues]]
-file = "tests/Dto/ToolCallContent/ToolCallContentFactoryTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 18
 
 [[issues]]
 file = "tests/Dto/ToolCallContent/ToolCallContentFactoryTest.php"
@@ -241,58 +133,10 @@ message = "Class has too many methods."
 count = 1
 
 [[issues]]
-file = "tests/Dto/ToolCallLocationTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 9
-
-[[issues]]
-file = "tests/Event/NotificationTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 14
-
-[[issues]]
-file = "tests/Event/SessionInfoUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 3
-
-[[issues]]
-file = "tests/Event/Update/AgentMessageChunkUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 8
-
-[[issues]]
-file = "tests/Event/Update/PlanUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 16
-
-[[issues]]
-file = "tests/Event/Update/SessionUpdateMapperTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 25
-
-[[issues]]
 file = "tests/Event/Update/SessionUpdateMapperTest.php"
 code = "too-many-methods"
 message = "Class has too many methods."
 count = 1
-
-[[issues]]
-file = "tests/Event/Update/ToolCallStatusUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 19
-
-[[issues]]
-file = "tests/Event/Update/ToolCallUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 37
 
 [[issues]]
 file = "tests/Event/Update/ToolCallUpdateTest.php"
@@ -302,24 +146,6 @@ count = 1
 
 [[issues]]
 file = "tests/Event/Update/UsageUpdateTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 9
-
-[[issues]]
-file = "tests/Event/Update/UsageUpdateTest.php"
 code = "too-many-methods"
 message = "Class has too many methods."
 count = 1
-
-[[issues]]
-file = "tests/Exception/JsonRpcExceptionTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 2
-
-[[issues]]
-file = "tests/JsonRpc/ResponseTest.php"
-code = "assertion-style"
-message = "Inconsistent assertions style."
-count = 8

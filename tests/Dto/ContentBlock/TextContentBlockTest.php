@@ -14,17 +14,17 @@ final class TextContentBlockTest extends TestCase
     {
         $block = new TextContentBlock('Hello');
 
-        self::assertSame('text', $block->getType());
-        self::assertSame('Hello', $block->getText());
-        self::assertNull($block->getAnnotations());
-        self::assertSame(['type' => 'text', 'text' => 'Hello'], $block->toArray());
+        static::assertSame('text', $block->getType());
+        static::assertSame('Hello', $block->getText());
+        static::assertNull($block->getAnnotations());
+        static::assertSame(['type' => 'text', 'text' => 'Hello'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void
     {
         $block = new TextContentBlock('Hello', new Annotations(['audience' => ['user']]));
 
-        self::assertSame(
+        static::assertSame(
             ['type' => 'text', 'text' => 'Hello', 'annotations' => ['audience' => ['user']]],
             $block->toArray(),
         );

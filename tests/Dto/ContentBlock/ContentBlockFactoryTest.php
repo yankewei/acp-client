@@ -20,9 +20,9 @@ final class ContentBlockFactoryTest extends TestCase
     {
         $block = ContentBlockFactory::fromArray(['type' => 'text', 'text' => 'Hello']);
 
-        self::assertInstanceOf(TextContentBlock::class, $block);
-        self::assertInstanceOf(ContentBlockInterface::class, $block);
-        self::assertSame('Hello', $block->getText());
+        static::assertInstanceOf(TextContentBlock::class, $block);
+        static::assertInstanceOf(ContentBlockInterface::class, $block);
+        static::assertSame('Hello', $block->getText());
     }
 
     public function testCreatesImageBlock(): void
@@ -33,9 +33,9 @@ final class ContentBlockFactoryTest extends TestCase
             'mimeType' => 'image/png',
         ]);
 
-        self::assertInstanceOf(ImageContentBlock::class, $block);
-        self::assertSame('base64', $block->getData());
-        self::assertSame('image/png', $block->getMimeType());
+        static::assertInstanceOf(ImageContentBlock::class, $block);
+        static::assertSame('base64', $block->getData());
+        static::assertSame('image/png', $block->getMimeType());
     }
 
     public function testCreatesAudioBlock(): void
@@ -46,8 +46,8 @@ final class ContentBlockFactoryTest extends TestCase
             'mimeType' => 'audio/wav',
         ]);
 
-        self::assertInstanceOf(AudioContentBlock::class, $block);
-        self::assertSame('audio/wav', $block->getMimeType());
+        static::assertInstanceOf(AudioContentBlock::class, $block);
+        static::assertSame('audio/wav', $block->getMimeType());
     }
 
     public function testCreatesResourceBlock(): void
@@ -57,9 +57,9 @@ final class ContentBlockFactoryTest extends TestCase
             'resource' => ['uri' => 'file:///a.php', 'text' => 'contents'],
         ]);
 
-        self::assertInstanceOf(ResourceContentBlock::class, $block);
-        self::assertSame('file:///a.php', $block->getUri());
-        self::assertSame('contents', $block->getText());
+        static::assertInstanceOf(ResourceContentBlock::class, $block);
+        static::assertSame('file:///a.php', $block->getUri());
+        static::assertSame('contents', $block->getText());
     }
 
     public function testCreatesResourceLinkBlock(): void
@@ -70,9 +70,9 @@ final class ContentBlockFactoryTest extends TestCase
             'name' => 'a.php',
         ]);
 
-        self::assertInstanceOf(ResourceLinkContentBlock::class, $block);
-        self::assertSame('file:///a.php', $block->getUri());
-        self::assertSame('a.php', $block->getName());
+        static::assertInstanceOf(ResourceLinkContentBlock::class, $block);
+        static::assertSame('file:///a.php', $block->getUri());
+        static::assertSame('a.php', $block->getName());
     }
 
     public function testFromArrayRejectsMissingType(): void
@@ -106,11 +106,11 @@ final class ContentBlockFactoryTest extends TestCase
             ['type' => 'text', 'text' => 'World'],
         ]);
 
-        self::assertCount(2, $blocks);
-        self::assertInstanceOf(TextContentBlock::class, $blocks[0]);
-        self::assertInstanceOf(TextContentBlock::class, $blocks[1]);
-        self::assertSame('Hello', $blocks[0]->getText());
-        self::assertSame('World', $blocks[1]->getText());
+        static::assertCount(2, $blocks);
+        static::assertInstanceOf(TextContentBlock::class, $blocks[0]);
+        static::assertInstanceOf(TextContentBlock::class, $blocks[1]);
+        static::assertSame('Hello', $blocks[0]->getText());
+        static::assertSame('World', $blocks[1]->getText());
     }
 
     public function testFromArrayListRejectsAssociativeArray(): void
@@ -146,6 +146,6 @@ final class ContentBlockFactoryTest extends TestCase
 
         $block = ContentBlockFactory::fromArray($data);
 
-        self::assertSame($data, $block->toArray());
+        static::assertSame($data, $block->toArray());
     }
 }

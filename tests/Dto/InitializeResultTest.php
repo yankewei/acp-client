@@ -27,34 +27,34 @@ final class InitializeResultTest extends TestCase
             ],
         ]);
 
-        self::assertSame(1, $result->getProtocolVersion());
-        self::assertSame(
+        static::assertSame(1, $result->getProtocolVersion());
+        static::assertSame(
             [
                 'sessionCapabilities' => ['list' => true],
                 'auth' => ['logout' => []],
             ],
             $result->getAgentCapabilities(),
         );
-        self::assertTrue($result->supportsLogout());
+        static::assertTrue($result->supportsLogout());
 
         $authMethods = $result->getAuthMethods();
-        self::assertCount(1, $authMethods);
-        self::assertSame('agent-login', $authMethods[0]->getId());
-        self::assertSame('Agent login', $authMethods[0]->getName());
-        self::assertSame('Sign in using the agent', $authMethods[0]->getDescription());
-        self::assertSame('agent', $authMethods[0]->getType());
-        self::assertSame($authMethods[0], $result->getAuthMethod('agent-login'));
-        self::assertNull($result->getAuthMethod('missing'));
+        static::assertCount(1, $authMethods);
+        static::assertSame('agent-login', $authMethods[0]->getId());
+        static::assertSame('Agent login', $authMethods[0]->getName());
+        static::assertSame('Sign in using the agent', $authMethods[0]->getDescription());
+        static::assertSame('agent', $authMethods[0]->getType());
+        static::assertSame($authMethods[0], $result->getAuthMethod('agent-login'));
+        static::assertNull($result->getAuthMethod('missing'));
     }
 
     public function testFromArrayAllowsEmptyCapabilities(): void
     {
         $result = InitializeResult::fromArray(['protocolVersion' => 1]);
 
-        self::assertSame(1, $result->getProtocolVersion());
-        self::assertSame([], $result->getAgentCapabilities());
-        self::assertSame([], $result->getAuthMethods());
-        self::assertFalse($result->supportsLogout());
+        static::assertSame(1, $result->getProtocolVersion());
+        static::assertSame([], $result->getAgentCapabilities());
+        static::assertSame([], $result->getAuthMethods());
+        static::assertFalse($result->supportsLogout());
     }
 
     public function testFromArrayRejectsListCapabilities(): void
@@ -103,19 +103,19 @@ final class InitializeResultTest extends TestCase
 
     public function testSupportsLogoutRequiresObjectCapability(): void
     {
-        self::assertFalse(
+        static::assertFalse(
             InitializeResult::fromArray([
                 'agentCapabilities' => ['auth' => ['logout' => null]],
             ])->supportsLogout(),
         );
 
-        self::assertTrue(
+        static::assertTrue(
             InitializeResult::fromArray([
                 'agentCapabilities' => ['auth' => ['logout' => []]],
             ])->supportsLogout(),
         );
 
-        self::assertTrue(
+        static::assertTrue(
             InitializeResult::fromArray([
                 'agentCapabilities' => ['auth' => ['logout' => ['_meta' => []]]],
             ])->supportsLogout(),
@@ -146,17 +146,17 @@ final class InitializeResultTest extends TestCase
             ],
         ]);
 
-        self::assertTrue($result->supportsLoadSession());
-        self::assertTrue($result->supportsSessionList());
-        self::assertTrue($result->supportsSessionResume());
-        self::assertTrue($result->supportsSessionClose());
-        self::assertTrue($result->supportsSessionDelete());
-        self::assertTrue($result->supportsAdditionalDirectories());
-        self::assertTrue($result->supportsMcpHttp());
-        self::assertTrue($result->supportsMcpSse());
-        self::assertTrue($result->supportsPromptImage());
-        self::assertTrue($result->supportsPromptAudio());
-        self::assertTrue($result->supportsPromptEmbeddedContext());
+        static::assertTrue($result->supportsLoadSession());
+        static::assertTrue($result->supportsSessionList());
+        static::assertTrue($result->supportsSessionResume());
+        static::assertTrue($result->supportsSessionClose());
+        static::assertTrue($result->supportsSessionDelete());
+        static::assertTrue($result->supportsAdditionalDirectories());
+        static::assertTrue($result->supportsMcpHttp());
+        static::assertTrue($result->supportsMcpSse());
+        static::assertTrue($result->supportsPromptImage());
+        static::assertTrue($result->supportsPromptAudio());
+        static::assertTrue($result->supportsPromptEmbeddedContext());
     }
 
     public function testPromptCapabilitiesRequireBooleanValues(): void
@@ -171,9 +171,9 @@ final class InitializeResultTest extends TestCase
             ],
         ]);
 
-        self::assertTrue($result->supportsPromptImage());
-        self::assertTrue($result->supportsPromptAudio());
-        self::assertTrue($result->supportsPromptEmbeddedContext());
+        static::assertTrue($result->supportsPromptImage());
+        static::assertTrue($result->supportsPromptAudio());
+        static::assertTrue($result->supportsPromptEmbeddedContext());
 
         $result = InitializeResult::fromArray([
             'agentCapabilities' => [
@@ -185,8 +185,8 @@ final class InitializeResultTest extends TestCase
             ],
         ]);
 
-        self::assertFalse($result->supportsPromptImage());
-        self::assertFalse($result->supportsPromptAudio());
-        self::assertFalse($result->supportsPromptEmbeddedContext());
+        static::assertFalse($result->supportsPromptImage());
+        static::assertFalse($result->supportsPromptAudio());
+        static::assertFalse($result->supportsPromptEmbeddedContext());
     }
 }
