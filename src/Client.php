@@ -6,6 +6,10 @@ namespace Yankewei\AcpClient;
 
 use JsonException;
 use Throwable;
+use Yankewei\AcpClient\Dto\FileSystem\ReadTextFileRequest;
+use Yankewei\AcpClient\Dto\FileSystem\ReadTextFileResult;
+use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileRequest;
+use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileResult;
 use Yankewei\AcpClient\Dto\InitializeResult;
 use Yankewei\AcpClient\Dto\PromptResult;
 use Yankewei\AcpClient\Dto\RequestPermission;
@@ -40,6 +44,12 @@ final class Client
 
     /** @var (callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>))|null */
     private $requestPermissionHandler = null;
+
+    /** @var (callable(ReadTextFileRequest): (ReadTextFileResult|string|array<string, mixed>))|null */
+    private $readTextFileHandler = null;
+
+    /** @var (callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null))|null */
+    private $writeTextFileHandler = null;
 
     /** @var array<string, array{id: int|string, sessionId: string}> */
     private array $pendingPermissionRequests = [];
@@ -549,6 +559,60 @@ final class Client
     {
         if ($this->requestPermissionHandler === $handler) {
             $this->requestPermissionHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP fs/read_text_file requests.
+     *
+     * The handler may return ReadTextFileResult, a plain string (wrapped as
+     * {content: ...}), or a raw result array for agent-specific extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(ReadTextFileRequest): (ReadTextFileResult|string|array<string, mixed>) $handler
+     */
+    public function onReadTextFile(callable $handler): void
+    {
+        $this->readTextFileHandler = $handler;
+    }
+
+    /**
+     * Remove the typed fs/read_text_file handler only if it is currently registered.
+     *
+     * @param callable(ReadTextFileRequest): (ReadTextFileResult|string|array<string, mixed>) $handler
+     */
+    public function offReadTextFile(callable $handler): void
+    {
+        if ($this->readTextFileHandler === $handler) {
+            $this->readTextFileHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP fs/write_text_file requests.
+     *
+     * The handler may return WriteTextFileResult, null/void, or a raw result array
+     * for agent-specific extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null) $handler
+     */
+    public function onWriteTextFile(callable $handler): void
+    {
+        $this->writeTextFileHandler = $handler;
+    }
+
+    /**
+     * Remove the typed fs/write_text_file handler only if it is currently registered.
+     *
+     * @param callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null) $handler
+     */
+    public function offWriteTextFile(callable $handler): void
+    {
+        if ($this->writeTextFileHandler === $handler) {
+            $this->writeTextFileHandler = null;
         }
     }
 
@@ -1177,6 +1241,16 @@ final class Client
             return;
         }
 
+        if ($method === 'fs/read_text_file' && $this->readTextFileHandler !== null) {
+            $this->handleReadTextFile($id, $data);
+            return;
+        }
+
+        if ($method === 'fs/write_text_file' && $this->writeTextFileHandler !== null) {
+            $this->handleWriteTextFile($id, $data);
+            return;
+        }
+
         $methodHandler = $this->requestHandlers[$method][0] ?? null;
         $anyHandler = $this->anyRequestHandler;
 
@@ -1259,6 +1333,104 @@ final class Client
         }
 
         return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleReadTextFile(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = ReadTextFileRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->readTextFileHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: fs/read_text_file');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeReadTextFileResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param ReadTextFileResult|string|array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function normalizeReadTextFileResult(ReadTextFileResult|string|array $result): array
+    {
+        if ($result instanceof ReadTextFileResult) {
+            return $result->toResultArray();
+        }
+
+        if (is_string($result)) {
+            return ['content' => $result];
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleWriteTextFile(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = WriteTextFileRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->writeTextFileHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: fs/write_text_file');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeWriteTextFileResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param WriteTextFileResult|array<string, mixed>|null $result
+     * @return array<string, mixed>
+     */
+    private function normalizeWriteTextFileResult(WriteTextFileResult|array|null $result): array
+    {
+        if ($result instanceof WriteTextFileResult) {
+            return $result->toResultArray();
+        }
+
+        if (is_array($result)) {
+            return $result;
+        }
+
+        return [];
     }
 
     private function cancelPendingPermissionRequests(string $sessionId): void
