@@ -46,7 +46,7 @@ final class Response
     private static function decodeObject(string $json): array
     {
         try {
-            $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($json, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new AcpException('Invalid JSON-RPC response: ' . $e->getMessage(), 0, $e);
         }

@@ -1097,7 +1097,7 @@ final class Client
     private function parseJsonLine(string $message): ?array
     {
         try {
-            $data = json_decode($message, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($message, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             return null;
         }
@@ -1168,7 +1168,7 @@ final class Client
 
         $method = $data['method'];
         if (!is_string($method)) {
-            $this->sendError($id, -32600, 'Invalid Request');
+            $this->sendError($id, -32_600, 'Invalid Request');
             return;
         }
 
@@ -1181,7 +1181,7 @@ final class Client
         $anyHandler = $this->anyRequestHandler;
 
         if ($methodHandler === null && $anyHandler === null) {
-            $this->sendError($id, -32601, "Method not found: {$method}");
+            $this->sendError($id, -32_601, "Method not found: {$method}");
             return;
         }
 
@@ -1196,7 +1196,7 @@ final class Client
             $result = $methodHandler !== null ? $methodHandler($params) : $anyHandler($method, $params);
             $this->sendResponse($id, $result);
         } catch (Throwable $e) {
-            $this->sendError($id, -32603, $e->getMessage());
+            $this->sendError($id, -32_603, $e->getMessage());
         }
     }
 
@@ -1214,7 +1214,7 @@ final class Client
             /** @var array<string, mixed> $params */
             $request = RequestPermission::fromArray($params);
         } catch (Throwable $e) {
-            $this->sendError($id, -32602, $e->getMessage());
+            $this->sendError($id, -32_602, $e->getMessage());
             return;
         }
 
@@ -1227,7 +1227,7 @@ final class Client
         try {
             $handler = $this->requestPermissionHandler;
             if ($handler === null) {
-                $this->sendError($id, -32601, 'Method not found: session/request_permission');
+                $this->sendError($id, -32_601, 'Method not found: session/request_permission');
                 return;
             }
 
@@ -1244,7 +1244,7 @@ final class Client
             }
 
             unset($this->pendingPermissionRequests[$key]);
-            $this->sendError($id, -32603, $e->getMessage());
+            $this->sendError($id, -32_603, $e->getMessage());
         }
     }
 

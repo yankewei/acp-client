@@ -18,6 +18,6 @@ final class JsonRpcExceptionTest extends TestCase
             ))->isAuthenticationRequired(),
         );
 
-        self::assertFalse((new JsonRpcException(-32600, 'Invalid request'))->isAuthenticationRequired());
+        self::assertFalse((new JsonRpcException(-32_600, 'Invalid request'))->isAuthenticationRequired());
     }
 }

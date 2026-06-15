@@ -83,9 +83,7 @@ final class ToolCallUpdate implements SessionUpdate
         );
 
         /** @var array<int, array<string, mixed>> $locationsList */
-        $locations = array_map(static fn(array $loc): ToolCallLocation => ToolCallLocation::fromArray(
-            $loc,
-        ), $locationsList);
+        $locations = array_map(ToolCallLocation::fromArray(...), $locationsList);
 
         $rawInput = Assert::optionalObjectField(
             $update,

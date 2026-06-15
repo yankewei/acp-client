@@ -72,12 +72,7 @@ final class StdioTransport implements TransportInterface
             throw new TransportException("Failed to start process: {$command}");
         }
 
-        if (
-            !isset($pipes[0], $pipes[1], $pipes[2])
-            || !is_resource($pipes[0])
-            || !is_resource($pipes[1])
-            || !is_resource($pipes[2])
-        ) {
+        if (!is_resource($pipes[0] ?? null) || !is_resource($pipes[1] ?? null) || !is_resource($pipes[2] ?? null)) {
             throw new TransportException("Failed to open process pipes: {$command}");
         }
 
@@ -86,7 +81,7 @@ final class StdioTransport implements TransportInterface
         $this->stdout = $pipes[1];
         $this->stderr = $pipes[2];
 
-        stream_set_blocking($this->stderr, false);
+        stream_set_blocking($this->stderr, enable: false);
     }
 
     public function send(string $message): void
@@ -116,7 +111,7 @@ final class StdioTransport implements TransportInterface
         }
 
         if ($timeout > 0.0) {
-            stream_set_blocking($stdout, false);
+            stream_set_blocking($stdout, enable: false);
 
             $end = microtime(true) + $timeout;
             do {
@@ -124,18 +119,18 @@ final class StdioTransport implements TransportInterface
 
                 $line = fgets($stdout);
                 if ($line !== false) {
-                    stream_set_blocking($stdout, true);
-                    return rtrim($line, "\n");
+                    stream_set_blocking($stdout, enable: true);
+                    return rtrim($line, characters: "\n");
                 }
 
                 if (!$this->isOpen()) {
-                    stream_set_blocking($stdout, true);
+                    stream_set_blocking($stdout, enable: true);
                     throw new TransportException($this->withStderr('Process exited without response'));
                 }
 
                 $remaining = $end - microtime(true);
                 if ($remaining <= 0.0) {
-                    stream_set_blocking($stdout, true);
+                    stream_set_blocking($stdout, enable: true);
                     return null;
                 }
 
@@ -150,7 +145,7 @@ final class StdioTransport implements TransportInterface
                     (int) (($remaining - (int) $remaining) * 1_000_000),
                 );
                 if ($selected === false) {
-                    stream_set_blocking($stdout, true);
+                    stream_set_blocking($stdout, enable: true);
                     throw new TransportException($this->withStderr('Failed to wait for process stdout'));
                 }
             } while (true);
@@ -167,7 +162,7 @@ final class StdioTransport implements TransportInterface
             return null;
         }
 
-        return rtrim($line, "\n");
+        return rtrim($line, characters: "\n");
     }
 
     public function close(): void

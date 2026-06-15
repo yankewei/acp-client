@@ -31,12 +31,10 @@ final class PlanUpdate implements SessionUpdate
         $entries = Assert::list($update['entries'] ?? null, 'Invalid plan update: entries must be a list');
 
         return new self($sessionId, array_map(
-            static function (mixed $entry, int $index): PlanEntry {
-                return PlanEntry::fromArray(Assert::object(
-                    $entry,
-                    "Invalid plan update: entries[{$index}] must be an object",
-                ));
-            },
+            static fn(mixed $entry, int $index): PlanEntry => PlanEntry::fromArray(Assert::object(
+                $entry,
+                "Invalid plan update: entries[{$index}] must be an object",
+            )),
             $entries,
             array_keys($entries),
         ));

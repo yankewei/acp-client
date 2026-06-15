@@ -102,7 +102,7 @@ final class Assert
             return null;
         }
 
-        if (!is_string($value) || !in_array($value, $allowed, true)) {
+        if (!is_string($value) || !in_array($value, $allowed, strict: true)) {
             throw new AcpException($message);
         }
 

@@ -28,7 +28,7 @@ final class ResponseTest extends TestCase
 
         $error = $response->getError();
         self::assertNotNull($error);
-        self::assertSame(-32600, $error->getCode());
+        self::assertSame(-32_600, $error->getCode());
         self::assertSame('Invalid Request', $error->getMessage());
     }
 

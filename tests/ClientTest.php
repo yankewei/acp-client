@@ -39,7 +39,7 @@ final class ClientTest extends TestCase
      */
     private static function decode(string $json): array
     {
-        $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        $decoded = json_decode($json, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         self::assertIsArray($decoded);
 
         /** @var array<string, mixed> $decoded */
@@ -992,7 +992,7 @@ final class ClientTest extends TestCase
             'jsonrpc' => '2.0',
             'id' => 1,
             'error' => [
-                'code' => -32600,
+                'code' => -32_600,
                 'message' => 'Invalid Request',
             ],
         ]);
@@ -1313,7 +1313,7 @@ final class ClientTest extends TestCase
         $response = self::decode($transport->sent[1]);
         self::assertSame('req-1', $response['id']);
         self::assertArrayHasKey('error', $response);
-        self::assertSame(-32601, self::errorOf($response)['code']);
+        self::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testAnyRequestHandlerRespondsToUnknownServerRequest(): void
@@ -1332,12 +1332,10 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onAnyRequest(static function (string $method, array $params): array {
-            return [
-                'method' => $method,
-                'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
-            ];
-        });
+        $client->onAnyRequest(static fn(string $method, array $params): array => [
+            'method' => $method,
+            'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
+        ]);
 
         self::assertSame(['ok' => true], $client->call('initialize'));
 
@@ -1396,7 +1394,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32601, self::errorOf($response)['code']);
+        self::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testHandlerExceptionReturnsInternalError(): void
@@ -1425,7 +1423,7 @@ final class ClientTest extends TestCase
         self::assertSame('req-1', $response['id']);
         self::assertArrayHasKey('error', $response);
         $error = self::errorOf($response);
-        self::assertSame(-32603, $error['code']);
+        self::assertSame(-32_603, $error['code']);
         self::assertSame('disk failure', $error['message']);
     }
 
@@ -1450,9 +1448,7 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequest('fs/read_text_file', static function (): string {
-            return 'file contents';
-        });
+        $client->onRequest('fs/read_text_file', static fn(): string => 'file contents');
 
         self::assertSame(['first' => true], $client->call('first'));
         self::assertSame(['second' => true], $client->call('second'));
@@ -1475,16 +1471,14 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $handler = static function (): string {
-            return 'file contents';
-        };
+        $handler = static fn(): string => 'file contents';
         $client->onRequest('fs/read_text_file', $handler);
         $client->offRequest('fs/read_text_file', $handler);
 
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32601, self::errorOf($response)['code']);
+        self::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     public function testRequestPermissionHandlerRespondsWithSelectedOutcome(): void
@@ -1566,7 +1560,9 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequestPermission(function (RequestPermission $request) use ($client): RequestPermissionOutcome {
+        $client->onRequestPermission(static function (RequestPermission $request) use (
+            $client,
+        ): RequestPermissionOutcome {
             self::assertSame('sess_1', $request->getSessionId());
             $client->sessionCancel('sess_1');
 
@@ -1621,7 +1617,7 @@ final class ClientTest extends TestCase
         $client->call('initialize');
 
         $response = self::decode($transport->sent[1]);
-        self::assertSame(-32601, self::errorOf($response)['code']);
+        self::assertSame(-32_601, self::errorOf($response)['code']);
     }
 
     /**
