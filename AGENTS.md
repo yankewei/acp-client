@@ -1,32 +1,196 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Project Overview
 
-This is a PHP 8.1 library for ACP (Agent Communication Protocol). Source code lives in `src/` under the `Yankewei\AcpClient\` PSR-4 namespace. Key areas are `src/Transport/` for transport implementations, `src/JsonRpc/` for protocol messages, `src/Dto/` for typed result objects, `src/Event/` for notifications, and `src/Exception/` for domain errors. Tests live in `tests/` under `Yankewei\AcpClient\Tests\`, with fixtures in `tests/Fixtures/`. Example scripts belong in `examples/`.
+`yankewei/acp-client` is a minimal PHP 8.1 library that implements a client for the [Agent Communication Protocol (ACP)](https://agentclientprotocol.com/). It speaks JSON-RPC 2.0 over stdio, exposes a synchronous blocking API, and provides typed convenience methods for the stable ACP v1 lifecycle.
+
+Key responsibilities of the library:
+
+- Send JSON-RPC requests/notifications and wait for responses.
+- Skip server-initiated notifications while waiting for a matching response.
+- Parse typed result objects (DTOs) for initialize, session, prompt, permission, and session-update messages.
+- Dispatch server-initiated notifications and agent-to-client requests to registered handlers.
+- Enforce ACP Session Setup rules when strict protocol mode is enabled.
+
+## Technology Stack
+
+- **Language:** PHP `^8.1`.
+- **Package Manager:** Composer (`composer.json`, `composer.lock`).
+- **Test Framework:** PHPUnit `^10.0 || ^11.0` (`phpunit.xml`).
+- **Static Analysis / Lint / Format:** [Mago](https://mago.carthage.software/) `^1.30.0` (`mago.toml`).
+  - `mago analyze` replaces the previous PHPStan step.
+  - `mago lint` enforces PER-CS style.
+  - `mago format` applies the formatter.
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) tests PHP 8.1–8.4.
+
+> **Note:** `.github/workflows/ci.yml` runs `vendor/bin/mago analyze` and `vendor/bin/mago lint`.
+
+## Project Structure
+
+Source code lives under `src/` in the `Yankewei\AcpClient\` PSR-4 namespace. Tests mirror the source layout under `tests/` in the `Yankewei\AcpClient\Tests\` namespace.
+
+```
+src/
+├── Client.php                      # Main JSON-RPC client and ACP method wrappers
+├── Transport/
+│   ├── TransportInterface.php      # Abstraction for transports
+│   └── StdioTransport.php          # stdio process transport with stderr capture
+├── JsonRpc/
+│   ├── Request.php                 # JSON-RPC request builder
+│   ├── Response.php                # JSON-RPC response parser
+│   └── Error.php                   # JSON-RPC error object
+├── Dto/                            # Typed value objects for ACP results
+│   ├── InitializeResult.php
+│   ├── Session.php
+│   ├── SessionListResult.php
+│   ├── PromptResult.php
+│   ├── RequestPermission.php
+│   ├── RequestPermissionOutcome.php
+│   ├── AuthMethod.php
+│   ├── SessionInfo.php
+│   ├── PermissionOption.php
+│   ├── ToolCallLocation.php
+│   ├── ContentBlock/               # Prompt content block types and factory
+│   ├── ToolCallContent/            # Tool-call content types and factory
+│   └── FileSystem/                 # File system request/result DTOs
+├── Event/                          # Server-initiated notification handling
+│   ├── Notification.php
+│   ├── SessionInfoUpdate.php
+│   ├── SessionInfoUpdateMapper.php
+│   └── Update/                     # Typed session/update variants
+├── Exception/
+│   ├── TransportException.php      # Process/IO/timeout failures
+│   ├── JsonRpcException.php        # JSON-RPC error responses
+│   └── AcpException.php            # Protocol/validation/parser errors
+└── Util/
+    ├── Assert.php                  # Reusable input validation helpers
+    └── Path.php                    # Absolute-path checks
+
+tests/
+├── ClientTest.php                  # Core client behavior and strict-mode tests
+├── FakeTransport.php               # In-memory transport for unit tests
+├── Fixtures/                       # Stand-in stdio agents used by tests
+├── Dto/                            # DTO parsing tests
+├── Event/                          # Notification/update tests
+├── Exception/                      # Exception tests
+└── JsonRpc/                        # JSON-RPC message tests
+
+examples/
+└── kimi-smoke.php                  # Optional live smoke test against `kimi acp`
+```
 
 ## Build, Test, and Development Commands
 
-- `composer update`: install or refresh development dependencies.
-- `vendor/bin/phpunit`: run the full PHPUnit suite configured by `phpunit.xml`.
-- `vendor/bin/mago analyze`: run static analysis (replaces PHPStan).
-- `vendor/bin/mago lint`: run code style linting.
-- `vendor/bin/mago format`: apply code formatting.
-- `php examples/kimi-smoke.php`: run the optional local smoke test against `kimi acp` when Kimi Code is installed.
+Install or refresh dependencies:
 
-Run tests, `mago analyze`, and `mago lint` before submitting changes that affect library behavior.
+```bash
+composer update
+```
 
-## Coding Style & Naming Conventions
+Run the test suite:
 
-Use `declare(strict_types=1);` in PHP files. Follow PSR-4 file and namespace mapping: `src/Dto/Session.php` defines `Yankewei\AcpClient\Dto\Session`, and tests mirror source names such as `tests/Dto/SessionTest.php`. Prefer `final` classes unless extension is intentionally part of the API. Use typed properties, explicit return types, and PHPDoc array shapes where PHP types cannot express structure. Keep JSON-RPC and ACP validation errors specific and actionable. Code formatting follows PER-CS defaults via `mago format`. Code style is enforced by `mago lint`, and static analysis by `mago analyze`.
+```bash
+vendor/bin/phpunit
+```
+
+Run static analysis and linting (both use baselines in the project root):
+
+```bash
+vendor/bin/mago analyze
+vendor/bin/mago lint
+```
+
+Apply automatic formatting:
+
+```bash
+vendor/bin/mago format
+```
+
+Optional live smoke test (requires Kimi Code to be installed):
+
+```bash
+php examples/kimi-smoke.php
+```
+
+## Code Style Guidelines
+
+- Every PHP file starts with `declare(strict_types=1);`.
+- Follow PSR-4 autoloading: `src/Dto/Session.php` defines `Yankewei\AcpClient\Dto\Session`; tests mirror source names, e.g. `tests/Dto/SessionTest.php`.
+- Prefer `final` classes unless extension is intentionally part of the API. Tests are exempt from the class-finality rule.
+- Use typed properties, constructor property promotion, and explicit return types.
+- Use PHPDoc array shapes where PHP native types cannot express structure (e.g. `array<string, mixed>`, `array<int, array<string, mixed>>`).
+- Keep validation errors specific and actionable; throw `AcpException` for protocol violations.
+- Code formatting follows PER-CS defaults via `mago format`.
 
 ## Testing Guidelines
 
-PHPUnit is the test framework. Name test files `*Test.php` and test methods `test...()`. Put shared fake implementations in `tests/` only when they are reused, as with `tests/FakeTransport.php`. Add or update tests for protocol validation, DTO parsing, transport behavior, and error handling. Fixture agents used by stdio tests should stay in `tests/Fixtures/`.
+- PHPUnit is configured by `phpunit.xml` and discovers all `tests/**/*Test.php` files.
+- Test methods are named `test...()`.
+- Shared test infrastructure:
+  - `tests/FakeTransport.php` — in-memory `TransportInterface` implementation used by most unit tests.
+  - `tests/Fixtures/` — small PHP scripts that act as stdio agents for transport-level tests.
+- Reset global state where needed (e.g. `ClientTest` resets `Request::$idCounter` via reflection between tests).
+- Add or update tests for protocol validation, DTO parsing, transport behavior, and error handling.
 
-## Commit & Pull Request Guidelines
+## Runtime Architecture
 
-Recent commits use concise imperative subjects, for example `Enforce session/delete capability check in strict protocol mode` and `Add ACP authentication discovery support`. Keep subjects focused on the behavior changed. Pull requests should include a short summary, test results (`vendor/bin/phpunit`, `mago analyze`, `mago lint`), and any protocol compatibility notes. Link related issues when available. Include screenshots only for documentation or terminal-output changes where visuals help.
+- `Client` is the single entry point. It owns a `TransportInterface`, a default timeout, and a strict-protocol flag.
+- Transports are opened lazily on the first `call()` or `notify()`.
+- `Client::call()` sends a JSON-RPC request, then blocks in `waitForResponse()` until the matching response arrives or the timeout expires.
+- While waiting, incoming server-initiated notifications are dispatched to registered listeners; incoming agent-to-client requests are handled synchronously.
+- `Client::notify()` sends a JSON-RPC notification without waiting for a response.
 
-## Security & Configuration Tips
+### ACP convenience methods
 
-Do not commit local credentials, agent tokens, or machine-specific paths. Stdio command validation expects absolute paths in strict protocol mode, so keep examples explicit and portable. Treat external agent responses as untrusted input and preserve strict DTO validation when adding new ACP methods.
+High-level wrappers return typed DTOs:
+
+- `initialize(array $params = []): InitializeResult`
+- `authenticate(string $methodId): array`
+- `logout(): array`
+- `sessionNew(string $cwd, ...): Session`
+- `sessionLoad(string $sessionId, string $cwd, ...): mixed`
+- `sessionResume(string $sessionId, string $cwd, ...): Session`
+- `sessionClose(string $sessionId): Session`
+- `sessionList(?string $cwd, ?string $cursor): SessionListResult`
+- `sessionDelete(string $sessionId): array`
+- `sessionPrompt(string $sessionId, string|array $prompt): PromptResult`
+- `sessionCancel(string $sessionId): void`
+- `setConfigOption(string $sessionId, string $configId, string $value): array`
+- `setMode(string $sessionId, string $modeId): mixed`
+
+The lower-level `Client::call()` and `Client::notify()` methods remain available for agent-specific extensions.
+
+### Notifications and agent requests
+
+- Register notification listeners with `onNotification()` or `on('session/update', ...)`.
+- Use typed mappers such as `SessionUpdateMapper::fromNotification()` to dispatch `session/update` variants to concrete value objects.
+- Register handlers for agent-to-client requests with `onRequest()`, a fallback with `onAnyRequest()`, or a typed permission handler with `onRequestPermission()`.
+
+### Protocol strictness
+
+By default `Client` runs in strict protocol mode (`strictProtocol: true`). It validates:
+
+- `initialize()` must be called before session lifecycle methods.
+- Advertised capabilities must exist for `session/list`, `session/load`, `session/resume`, `session/close`, `session/delete`, and `additionalDirectories`.
+- `cwd`, `additionalDirectories`, and stdio MCP `command` values must be absolute paths.
+- MCP server configurations must match the expected stdio/http/sse shapes.
+- HTTP/SSE MCP servers require the matching `mcpCapabilities.http`/`mcpCapabilities.sse` capability.
+- Prompt content blocks must match advertised `promptCapabilities`; image, audio, and embedded resource blocks are rejected unless advertised.
+
+Disable strict mode with `new Client($transport, strictProtocol: false)` for a permissive thin JSON-RPC wrapper.
+
+## Security Considerations
+
+- Do not commit local credentials, agent tokens, or machine-specific paths.
+- In strict protocol mode, stdio commands and directories must be absolute paths.
+- Treat all agent responses as untrusted input; DTO factories perform strict validation and throw `AcpException` on malformed data.
+- The stdio transport captures stderr to enrich error messages but keeps the buffer capped at 4000 characters.
+
+## Commit and Pull Request Guidelines
+
+- Use concise imperative commit subjects, e.g. `Enforce session/delete capability check in strict protocol mode`.
+- Pull requests should include a short summary and the results of:
+  - `vendor/bin/phpunit`
+  - `vendor/bin/mago analyze`
+  - `vendor/bin/mago lint`
+- Include protocol compatibility notes when ACP behavior changes.

@@ -29,5 +29,8 @@ jobs:
       - name: Run PHPUnit
         run: vendor/bin/phpunit
 
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse -c phpstan.neon.dist
+      - name: Run Mago analyze
+        run: vendor/bin/mago analyze
+
+      - name: Run Mago lint
+        run: vendor/bin/mago lint
