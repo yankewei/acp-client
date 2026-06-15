@@ -8,8 +8,7 @@ final class TerminalToolCallContent implements ToolCallContentInterface
 {
     public function __construct(
         private readonly string $terminalId,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

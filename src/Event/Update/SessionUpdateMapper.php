@@ -32,6 +32,8 @@ final class SessionUpdateMapper
             return null;
         }
 
+        /** @var array<string, mixed> $update */
+
         $type = $update['sessionUpdate'] ?? null;
         if (!is_string($type)) {
             return null;

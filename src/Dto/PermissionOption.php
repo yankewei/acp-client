@@ -16,8 +16,7 @@ final class PermissionOption
         private readonly string $optionId,
         private readonly string $name,
         private readonly string $kind,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data
@@ -27,21 +26,15 @@ final class PermissionOption
     public static function fromArray(array $data): self
     {
         return new self(
-            Assert::requiredString(
-                $data,
-                'optionId',
-                'Invalid permission option: optionId must be a string',
-            ),
-            Assert::requiredString(
-                $data,
-                'name',
-                'Invalid permission option: name must be a string',
-            ),
+            Assert::requiredString($data, 'optionId', 'Invalid permission option: optionId must be a string'),
+            Assert::requiredString($data, 'name', 'Invalid permission option: name must be a string'),
             Assert::optionalStringInEnum(
                 $data['kind'] ?? null,
                 self::KINDS,
                 'Invalid permission option: kind must be one of allow_once, allow_always, reject_once, reject_always',
-            ) ?? throw new AcpException('Invalid permission option: kind must be one of allow_once, allow_always, reject_once, reject_always'),
+            ) ?? throw new AcpException(
+                'Invalid permission option: kind must be one of allow_once, allow_always, reject_once, reject_always',
+            ),
         );
     }
 

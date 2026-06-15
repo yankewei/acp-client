@@ -8,14 +8,16 @@ This is a PHP 8.1 library for ACP (Agent Communication Protocol). Source code li
 
 - `composer update`: install or refresh development dependencies.
 - `vendor/bin/phpunit`: run the full PHPUnit suite configured by `phpunit.xml`.
-- `vendor/bin/phpstan analyse -c phpstan.neon.dist`: run static analysis at PHPStan level 9.
+- `vendor/bin/mago analyze`: run static analysis (replaces PHPStan).
+- `vendor/bin/mago lint`: run code style linting.
+- `vendor/bin/mago format`: apply code formatting.
 - `php examples/kimi-smoke.php`: run the optional local smoke test against `kimi acp` when Kimi Code is installed.
 
-Run tests and PHPStan before submitting changes that affect library behavior.
+Run tests, `mago analyze`, and `mago lint` before submitting changes that affect library behavior.
 
 ## Coding Style & Naming Conventions
 
-Use `declare(strict_types=1);` in PHP files. Follow PSR-4 file and namespace mapping: `src/Dto/Session.php` defines `Yankewei\AcpClient\Dto\Session`, and tests mirror source names such as `tests/Dto/SessionTest.php`. Prefer `final` classes unless extension is intentionally part of the API. Use typed properties, explicit return types, and PHPDoc array shapes where PHP types cannot express structure. Keep JSON-RPC and ACP validation errors specific and actionable.
+Use `declare(strict_types=1);` in PHP files. Follow PSR-4 file and namespace mapping: `src/Dto/Session.php` defines `Yankewei\AcpClient\Dto\Session`, and tests mirror source names such as `tests/Dto/SessionTest.php`. Prefer `final` classes unless extension is intentionally part of the API. Use typed properties, explicit return types, and PHPDoc array shapes where PHP types cannot express structure. Keep JSON-RPC and ACP validation errors specific and actionable. Code formatting follows PER-CS defaults via `mago format`. Code style is enforced by `mago lint`, and static analysis by `mago analyze`.
 
 ## Testing Guidelines
 
@@ -23,7 +25,7 @@ PHPUnit is the test framework. Name test files `*Test.php` and test methods `tes
 
 ## Commit & Pull Request Guidelines
 
-Recent commits use concise imperative subjects, for example `Enforce session/delete capability check in strict protocol mode` and `Add ACP authentication discovery support`. Keep subjects focused on the behavior changed. Pull requests should include a short summary, test results (`vendor/bin/phpunit`, PHPStan), and any protocol compatibility notes. Link related issues when available. Include screenshots only for documentation or terminal-output changes where visuals help.
+Recent commits use concise imperative subjects, for example `Enforce session/delete capability check in strict protocol mode` and `Add ACP authentication discovery support`. Keep subjects focused on the behavior changed. Pull requests should include a short summary, test results (`vendor/bin/phpunit`, `mago analyze`, `mago lint`), and any protocol compatibility notes. Link related issues when available. Include screenshots only for documentation or terminal-output changes where visuals help.
 
 ## Security & Configuration Tips
 

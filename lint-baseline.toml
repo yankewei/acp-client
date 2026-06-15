@@ -1,0 +1,151 @@
+variant = "loose"
+
+[[issues]]
+file = "src/Client.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "kan-defect"
+message = "Class has a high kan defect score."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "no-boolean-flag-parameter"
+message = "Avoid boolean flag parameters."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Dto/ContentBlock/ResourceContentBlock.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Dto/ContentBlock/ResourceLinkContentBlock.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Dto/InitializeResult.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Dto/InitializeResult.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Dto/SessionInfo.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Event/SessionInfoUpdate.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Event/Update/ToolCallUpdate.php"
+code = "excessive-parameter-list"
+message = "Parameter list is too long."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "halstead"
+message = "Method has a high halstead difficulty"
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "kan-defect"
+message = "Class has a high kan defect score."
+count = 1
+
+[[issues]]
+file = "src/Transport/StdioTransport.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "src/Util/Assert.php"
+code = "cyclomatic-complexity"
+message = "Class has high complexity."
+count = 1
+
+[[issues]]
+file = "src/Util/Assert.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "inline-variable-return"
+message = "Variable assignment can be inlined into the return statement."
+count = 3
+
+[[issues]]
+file = "tests/ClientTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Dto/ContentBlock/ContentBlockFactoryTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Dto/ToolCallContent/ToolCallContentFactoryTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Event/Update/SessionUpdateMapperTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Event/Update/ToolCallUpdateTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1
+
+[[issues]]
+file = "tests/Event/Update/UsageUpdateTest.php"
+code = "too-many-methods"
+message = "Class has too many methods."
+count = 1

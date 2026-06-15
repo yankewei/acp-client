@@ -12,8 +12,7 @@ final class Notification
     public function __construct(
         private readonly string $method,
         private readonly array $params,
-    ) {
-    }
+    ) {}
 
     public function getMethod(): string
     {

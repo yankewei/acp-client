@@ -14,16 +14,16 @@ final class NotificationTest extends TestCase
     {
         $notification = new Notification('session/update', ['status' => 'running']);
 
-        self::assertSame('session/update', $notification->getMethod());
-        self::assertSame(['status' => 'running'], $notification->getParams());
+        static::assertSame('session/update', $notification->getMethod());
+        static::assertSame(['status' => 'running'], $notification->getParams());
     }
 
     public function testIsMethodMatches(): void
     {
         $notification = new Notification('session/update', []);
 
-        self::assertTrue($notification->is('session/update'));
-        self::assertFalse($notification->is('agent/update'));
+        static::assertTrue($notification->is('session/update'));
+        static::assertFalse($notification->is('agent/update'));
     }
 
     public function testParsesSessionInfoUpdate(): void
@@ -40,23 +40,23 @@ final class NotificationTest extends TestCase
 
         $update = SessionInfoUpdateMapper::fromNotification($notification);
 
-        self::assertNotNull($update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertTrue($update->hasTitle());
-        self::assertNull($update->getTitle());
-        self::assertTrue($update->hasUpdatedAt());
-        self::assertSame('2026-06-13T00:00:00Z', $update->getUpdatedAt());
-        self::assertTrue($update->hasMeta());
-        self::assertSame(['priority' => 'high'], $update->getMeta());
+        static::assertNotNull($update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertTrue($update->hasTitle());
+        static::assertNull($update->getTitle());
+        static::assertTrue($update->hasUpdatedAt());
+        static::assertSame('2026-06-13T00:00:00Z', $update->getUpdatedAt());
+        static::assertTrue($update->hasMeta());
+        static::assertSame(['priority' => 'high'], $update->getMeta());
     }
 
     public function testSessionInfoUpdateReturnsNullForOtherNotifications(): void
     {
-        self::assertNull(SessionInfoUpdateMapper::fromNotification(new Notification('session/update', [
+        static::assertNull(SessionInfoUpdateMapper::fromNotification(new Notification('session/update', [
             'sessionId' => 'sess_1',
             'update' => ['sessionUpdate' => 'agent_message_chunk'],
         ])));
 
-        self::assertNull(SessionInfoUpdateMapper::fromNotification(new Notification('agent/update', [])));
+        static::assertNull(SessionInfoUpdateMapper::fromNotification(new Notification('agent/update', [])));
     }
 }

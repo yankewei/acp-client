@@ -14,8 +14,7 @@ final class ResourceContentBlock implements ContentBlockInterface
         private readonly ?string $blob,
         private readonly ?string $mimeType,
         private readonly ?Annotations $annotations = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

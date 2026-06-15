@@ -12,23 +12,16 @@ final class ResourceLinkContentBlockTest extends TestCase
 {
     public function testGettersAndToArray(): void
     {
-        $block = new ResourceLinkContentBlock(
-            'file:///a.php',
-            'a.php',
-            'text/x-php',
-            'Source',
-            'A file',
-            123,
-        );
+        $block = new ResourceLinkContentBlock('file:///a.php', 'a.php', 'text/x-php', 'Source', 'A file', 123);
 
-        self::assertSame('resource_link', $block->getType());
-        self::assertSame('file:///a.php', $block->getUri());
-        self::assertSame('a.php', $block->getName());
-        self::assertSame('text/x-php', $block->getMimeType());
-        self::assertSame('Source', $block->getTitle());
-        self::assertSame('A file', $block->getDescription());
-        self::assertSame(123, $block->getSize());
-        self::assertSame(
+        static::assertSame('resource_link', $block->getType());
+        static::assertSame('file:///a.php', $block->getUri());
+        static::assertSame('a.php', $block->getName());
+        static::assertSame('text/x-php', $block->getMimeType());
+        static::assertSame('Source', $block->getTitle());
+        static::assertSame('A file', $block->getDescription());
+        static::assertSame(123, $block->getSize());
+        static::assertSame(
             [
                 'type' => 'resource_link',
                 'uri' => 'file:///a.php',
@@ -46,10 +39,7 @@ final class ResourceLinkContentBlockTest extends TestCase
     {
         $block = new ResourceLinkContentBlock('file:///a.php', 'a.php');
 
-        self::assertSame(
-            ['type' => 'resource_link', 'uri' => 'file:///a.php', 'name' => 'a.php'],
-            $block->toArray(),
-        );
+        static::assertSame(['type' => 'resource_link', 'uri' => 'file:///a.php', 'name' => 'a.php'], $block->toArray());
     }
 
     public function testToArrayIncludesAnnotations(): void
@@ -64,7 +54,7 @@ final class ResourceLinkContentBlockTest extends TestCase
             new Annotations(['audience' => ['user']]),
         );
 
-        self::assertSame(
+        static::assertSame(
             [
                 'type' => 'resource_link',
                 'uri' => 'file:///a.php',

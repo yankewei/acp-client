@@ -10,8 +10,7 @@ final class DiffToolCallContent implements ToolCallContentInterface
         private readonly string $path,
         private readonly string $newText,
         private readonly ?string $oldText = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

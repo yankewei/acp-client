@@ -11,8 +11,7 @@ final class RequestPermissionOutcome
     private function __construct(
         private readonly string $outcome,
         private readonly ?string $optionId = null,
-    ) {
-    }
+    ) {}
 
     public static function selected(string $optionId): self
     {

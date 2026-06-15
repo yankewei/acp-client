@@ -23,12 +23,12 @@ final class UsageUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('usage_update', $update->getUpdateType());
-        self::assertSame(10, $update->getUsed());
-        self::assertSame(100, $update->getSize());
-        self::assertSame(['amount' => 0.05, 'currency' => 'USD'], $update->getCost());
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('usage_update', $update->getUpdateType());
+        static::assertSame(10, $update->getUsed());
+        static::assertSame(100, $update->getSize());
+        static::assertSame(['amount' => 0.05, 'currency' => 'USD'], $update->getCost());
     }
 
     public function testParsesUsageUpdateWithoutCost(): void
@@ -39,9 +39,9 @@ final class UsageUpdateTest extends TestCase
             'size' => 0,
         ]);
 
-        self::assertNull($update->getCost());
-        self::assertSame(0, $update->getUsed());
-        self::assertSame(0, $update->getSize());
+        static::assertNull($update->getCost());
+        static::assertSame(0, $update->getUsed());
+        static::assertSame(0, $update->getSize());
     }
 
     public function testRejectsMissingUsed(): void

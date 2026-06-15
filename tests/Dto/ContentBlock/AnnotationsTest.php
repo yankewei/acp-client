@@ -13,14 +13,14 @@ final class AnnotationsTest extends TestCase
     {
         $annotations = Annotations::fromArray(['audience' => ['user']], 'must be object');
 
-        self::assertInstanceOf(Annotations::class, $annotations);
-        self::assertSame(['audience' => ['user']], $annotations->getData());
-        self::assertSame(['audience' => ['user']], $annotations->toArray());
+        static::assertInstanceOf(Annotations::class, $annotations);
+        static::assertSame(['audience' => ['user']], $annotations->getData());
+        static::assertSame(['audience' => ['user']], $annotations->toArray());
     }
 
     public function testFromArrayReturnsNullForNull(): void
     {
-        self::assertNull(Annotations::fromArray(null, 'must be object'));
+        static::assertNull(Annotations::fromArray(null, 'must be object'));
     }
 
     public function testFromArrayRejectsNonObject(): void

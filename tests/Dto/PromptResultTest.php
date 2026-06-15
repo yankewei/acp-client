@@ -14,18 +14,18 @@ final class PromptResultTest extends TestCase
     {
         $result = PromptResult::fromArray(['stopReason' => 'end_turn']);
 
-        self::assertSame('end_turn', $result->getStopReason());
-        self::assertTrue($result->isEndTurn());
-        self::assertFalse($result->isCancelled());
-        self::assertSame(['stopReason' => 'end_turn'], $result->getData());
+        static::assertSame('end_turn', $result->getStopReason());
+        static::assertTrue($result->isEndTurn());
+        static::assertFalse($result->isCancelled());
+        static::assertSame(['stopReason' => 'end_turn'], $result->getData());
     }
 
     public function testStopReasonHelpers(): void
     {
-        self::assertTrue(PromptResult::fromArray(['stopReason' => 'max_tokens'])->isMaxTokens());
-        self::assertTrue(PromptResult::fromArray(['stopReason' => 'max_turn_requests'])->isMaxTurnRequests());
-        self::assertTrue(PromptResult::fromArray(['stopReason' => 'refusal'])->isRefusal());
-        self::assertTrue(PromptResult::fromArray(['stopReason' => 'cancelled'])->isCancelled());
+        static::assertTrue(PromptResult::fromArray(['stopReason' => 'max_tokens'])->isMaxTokens());
+        static::assertTrue(PromptResult::fromArray(['stopReason' => 'max_turn_requests'])->isMaxTurnRequests());
+        static::assertTrue(PromptResult::fromArray(['stopReason' => 'refusal'])->isRefusal());
+        static::assertTrue(PromptResult::fromArray(['stopReason' => 'cancelled'])->isCancelled());
     }
 
     public function testFromArrayRejectsMissingStopReason(): void

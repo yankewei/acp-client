@@ -33,27 +33,27 @@ final class PlanUpdateTest extends TestCase
             ],
         ]);
 
-        self::assertInstanceOf(SessionUpdate::class, $update);
-        self::assertSame('sess_1', $update->getSessionId());
-        self::assertSame('plan', $update->getUpdateType());
+        static::assertInstanceOf(SessionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('plan', $update->getUpdateType());
 
         $entries = $update->getEntries();
-        self::assertCount(3, $entries);
+        static::assertCount(3, $entries);
 
-        self::assertInstanceOf(PlanEntry::class, $entries[0]);
-        self::assertSame('First step', $entries[0]->getContent());
-        self::assertSame('high', $entries[0]->getPriority());
-        self::assertSame('in_progress', $entries[0]->getStatus());
+        static::assertInstanceOf(PlanEntry::class, $entries[0]);
+        static::assertSame('First step', $entries[0]->getContent());
+        static::assertSame('high', $entries[0]->getPriority());
+        static::assertSame('in_progress', $entries[0]->getStatus());
 
-        self::assertInstanceOf(PlanEntry::class, $entries[1]);
-        self::assertSame('Second step', $entries[1]->getContent());
-        self::assertSame('low', $entries[1]->getPriority());
-        self::assertNull($entries[1]->getStatus());
+        static::assertInstanceOf(PlanEntry::class, $entries[1]);
+        static::assertSame('Second step', $entries[1]->getContent());
+        static::assertSame('low', $entries[1]->getPriority());
+        static::assertNull($entries[1]->getStatus());
 
-        self::assertInstanceOf(PlanEntry::class, $entries[2]);
-        self::assertSame('Third step', $entries[2]->getContent());
-        self::assertNull($entries[2]->getPriority());
-        self::assertSame('completed', $entries[2]->getStatus());
+        static::assertInstanceOf(PlanEntry::class, $entries[2]);
+        static::assertSame('Third step', $entries[2]->getContent());
+        static::assertNull($entries[2]->getPriority());
+        static::assertSame('completed', $entries[2]->getStatus());
     }
 
     public function testRejectsWrongSessionUpdate(): void

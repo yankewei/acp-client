@@ -9,9 +9,7 @@ use Yankewei\AcpClient\Util\Assert;
 
 final class ContentBlockFactory
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * @param array<string, mixed> $data
@@ -36,9 +34,7 @@ final class ContentBlockFactory
             'audio' => self::createAudio($data, $annotations),
             'resource' => self::createResource($data, $annotations),
             'resource_link' => self::createResourceLink($data, $annotations),
-            default => throw new AcpException(
-                'Invalid content block: type is not a supported content block type',
-            ),
+            default => throw new AcpException('Invalid content block: type is not a supported content block type'),
         };
     }
 
@@ -83,23 +79,11 @@ final class ContentBlockFactory
      */
     private static function createImage(array $data, ?Annotations $annotations): ImageContentBlock
     {
-        $dataValue = Assert::requiredString(
-            $data,
-            'data',
-            'Invalid image content block: data must be a string',
-        );
+        $dataValue = Assert::requiredString($data, 'data', 'Invalid image content block: data must be a string');
 
-        $mimeType = Assert::requiredString(
-            $data,
-            'mimeType',
-            'Invalid image content block: mimeType must be a string',
-        );
+        $mimeType = Assert::requiredString($data, 'mimeType', 'Invalid image content block: mimeType must be a string');
 
-        $uri = Assert::optionalString(
-            $data,
-            'uri',
-            'Invalid image content block: uri must be a string or null',
-        );
+        $uri = Assert::optionalString($data, 'uri', 'Invalid image content block: uri must be a string or null');
 
         return new ImageContentBlock($dataValue, $mimeType, $uri, $annotations);
     }
@@ -109,17 +93,9 @@ final class ContentBlockFactory
      */
     private static function createAudio(array $data, ?Annotations $annotations): AudioContentBlock
     {
-        $dataValue = Assert::requiredString(
-            $data,
-            'data',
-            'Invalid audio content block: data must be a string',
-        );
+        $dataValue = Assert::requiredString($data, 'data', 'Invalid audio content block: data must be a string');
 
-        $mimeType = Assert::requiredString(
-            $data,
-            'mimeType',
-            'Invalid audio content block: mimeType must be a string',
-        );
+        $mimeType = Assert::requiredString($data, 'mimeType', 'Invalid audio content block: mimeType must be a string');
 
         return new AudioContentBlock($dataValue, $mimeType, $annotations);
     }
@@ -143,17 +119,9 @@ final class ContentBlockFactory
      */
     private static function createResourceLink(array $data, ?Annotations $annotations): ResourceLinkContentBlock
     {
-        $uri = Assert::requiredString(
-            $data,
-            'uri',
-            'Invalid resource_link content block: uri must be a string',
-        );
+        $uri = Assert::requiredString($data, 'uri', 'Invalid resource_link content block: uri must be a string');
 
-        $name = Assert::requiredString(
-            $data,
-            'name',
-            'Invalid resource_link content block: name must be a string',
-        );
+        $name = Assert::requiredString($data, 'name', 'Invalid resource_link content block: name must be a string');
 
         $mimeType = Assert::optionalString(
             $data,
@@ -182,14 +150,6 @@ final class ContentBlockFactory
             $size = $data['size'];
         }
 
-        return new ResourceLinkContentBlock(
-            $uri,
-            $name,
-            $mimeType,
-            $title,
-            $description,
-            $size,
-            $annotations,
-        );
+        return new ResourceLinkContentBlock($uri, $name, $mimeType, $title, $description, $size, $annotations);
     }
 }

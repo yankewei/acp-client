@@ -11,8 +11,7 @@ final class ImageContentBlock implements ContentBlockInterface
         private readonly string $mimeType,
         private readonly ?string $uri = null,
         private readonly ?Annotations $annotations = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

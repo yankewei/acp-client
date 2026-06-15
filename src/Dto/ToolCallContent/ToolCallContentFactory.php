@@ -10,9 +10,7 @@ use Yankewei\AcpClient\Util\Assert;
 
 final class ToolCallContentFactory
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * @param array<string, mixed> $data
@@ -82,17 +80,9 @@ final class ToolCallContentFactory
      */
     private static function createDiff(array $data): DiffToolCallContent
     {
-        $path = Assert::requiredString(
-            $data,
-            'path',
-            'Invalid diff tool call content: path must be a string',
-        );
+        $path = Assert::requiredString($data, 'path', 'Invalid diff tool call content: path must be a string');
 
-        $newText = Assert::requiredString(
-            $data,
-            'newText',
-            'Invalid diff tool call content: newText must be a string',
-        );
+        $newText = Assert::requiredString($data, 'newText', 'Invalid diff tool call content: newText must be a string');
 
         $oldText = Assert::optionalString(
             $data,

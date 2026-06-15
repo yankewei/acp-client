@@ -14,8 +14,7 @@ final class ResourceLinkContentBlock implements ContentBlockInterface
         private readonly ?string $description = null,
         private readonly ?int $size = null,
         private readonly ?Annotations $annotations = null,
-    ) {
-    }
+    ) {}
 
     public function getType(): string
     {

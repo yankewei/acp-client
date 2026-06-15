@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 while (($line = fgets(STDIN)) !== false) {
-    $request = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+    $request = json_decode($line, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
     if (!is_array($request)) {
         continue;
     }
@@ -12,13 +12,15 @@ while (($line = fgets(STDIN)) !== false) {
         continue;
     }
 
-    echo json_encode([
-        'jsonrpc' => '2.0',
-        'id' => $request['id'],
-        'result' => [
-            'method' => $request['method'],
-            'params' => $request['params'] ?? [],
-        ],
-    ], JSON_THROW_ON_ERROR) . PHP_EOL;
+    echo
+        json_encode([
+            'jsonrpc' => '2.0',
+            'id' => $request['id'],
+            'result' => [
+                'method' => $request['method'],
+                'params' => $request['params'] ?? [],
+            ],
+        ], flags: JSON_THROW_ON_ERROR) . PHP_EOL
+    ;
     flush();
 }

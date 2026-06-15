@@ -7,9 +7,9 @@ namespace Yankewei\AcpClient;
 use JsonException;
 use Throwable;
 use Yankewei\AcpClient\Dto\InitializeResult;
+use Yankewei\AcpClient\Dto\PromptResult;
 use Yankewei\AcpClient\Dto\RequestPermission;
 use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
-use Yankewei\AcpClient\Dto\PromptResult;
 use Yankewei\AcpClient\Dto\Session;
 use Yankewei\AcpClient\Dto\SessionListResult;
 use Yankewei\AcpClient\Event\Notification;
@@ -50,8 +50,7 @@ final class Client
         private readonly TransportInterface $transport,
         private readonly float $defaultTimeout = 30.0,
         private readonly bool $strictProtocol = true,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $params
@@ -62,10 +61,7 @@ final class Client
      */
     public function initialize(array $params = []): InitializeResult
     {
-        $result = $this->call(
-            'initialize',
-            array_replace_recursive($this->defaultInitializeParams(), $params),
-        );
+        $result = $this->call('initialize', array_replace_recursive($this->defaultInitializeParams(), $params));
 
         $initializeResult = InitializeResult::fromArray($this->expectArrayResult($result, 'initialize'));
         $this->initializeResult = $initializeResult;
@@ -114,9 +110,7 @@ final class Client
         if ($this->strictProtocol) {
             $initializeResult = $this->requireInitialized('authenticate');
             if ($initializeResult->getAuthMethod($methodId) === null) {
-                throw new AcpException(
-                    "Cannot call authenticate: agent did not advertise auth method {$methodId}",
-                );
+                throw new AcpException("Cannot call authenticate: agent did not advertise auth method {$methodId}");
             }
         }
 
@@ -161,16 +155,10 @@ final class Client
     ): Session {
         $this->validateSessionSetup('session/new', $cwd, $mcpServers, $additionalDirectories);
 
-        return Session::fromArray(
-            $this->expectArrayResult(
-                $this->call(
-                    'session/new',
-                    $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
-                    $timeout,
-                ),
-                'session/new',
-            ),
-        );
+        return Session::fromArray($this->expectArrayResult(
+            $this->call('session/new', $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories), $timeout),
+            'session/new',
+        ));
     }
 
     /**
@@ -220,22 +208,22 @@ final class Client
     ): Session {
         if ($this->strictProtocol) {
             if (!$this->requireInitialized('session/resume')->supportsSessionResume()) {
-                throw new AcpException('Cannot call session/resume: agent did not advertise sessionCapabilities.resume');
+                throw new AcpException(
+                    'Cannot call session/resume: agent did not advertise sessionCapabilities.resume',
+                );
             }
         }
 
         $this->validateSessionSetup('session/resume', $cwd, $mcpServers, $additionalDirectories);
 
-        return Session::fromArray(
-            $this->expectArrayResult(
-                $this->call(
-                    'session/resume',
-                    ['sessionId' => $sessionId] + $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
-                    $timeout,
-                ),
+        return Session::fromArray($this->expectArrayResult(
+            $this->call(
                 'session/resume',
+                ['sessionId' => $sessionId] + $this->sessionSetupParams($cwd, $mcpServers, $additionalDirectories),
+                $timeout,
             ),
-        );
+            'session/resume',
+        ));
     }
 
     /**
@@ -252,12 +240,10 @@ final class Client
             }
         }
 
-        return Session::fromArray(
-            $this->expectArrayResult(
-                $this->call('session/close', ['sessionId' => $sessionId], $timeout),
-                'session/close',
-            ),
-        );
+        return Session::fromArray($this->expectArrayResult(
+            $this->call('session/close', ['sessionId' => $sessionId], $timeout),
+            'session/close',
+        ));
     }
 
     /**
@@ -288,12 +274,10 @@ final class Client
             $params['cursor'] = $cursor;
         }
 
-        return SessionListResult::fromArray(
-            $this->expectArrayResult(
-                $this->call('session/list', $params, $timeout),
-                'session/list',
-            ),
-        );
+        return SessionListResult::fromArray($this->expectArrayResult(
+            $this->call('session/list', $params, $timeout),
+            'session/list',
+        ));
     }
 
     /**
@@ -307,7 +291,9 @@ final class Client
     {
         if ($this->strictProtocol) {
             if (!$this->requireInitialized('session/delete')->supportsSessionDelete()) {
-                throw new AcpException('Cannot call session/delete: agent did not advertise sessionCapabilities.delete');
+                throw new AcpException(
+                    'Cannot call session/delete: agent did not advertise sessionCapabilities.delete',
+                );
             }
         }
 
@@ -333,19 +319,17 @@ final class Client
         $prompt = $this->normalizePrompt($prompt);
         $this->validatePrompt('session/prompt', $prompt);
 
-        return PromptResult::fromArray(
-            $this->expectArrayResult(
-                $this->call(
-                    'session/prompt',
-                    [
-                        'sessionId' => $sessionId,
-                        'prompt' => $prompt,
-                    ],
-                    $timeout,
-                ),
+        return PromptResult::fromArray($this->expectArrayResult(
+            $this->call(
                 'session/prompt',
+                [
+                    'sessionId' => $sessionId,
+                    'prompt' => $prompt,
+                ],
+                $timeout,
             ),
-        );
+            'session/prompt',
+        ));
     }
 
     /**
@@ -365,12 +349,8 @@ final class Client
      * @throws JsonException
      * @throws TransportException
      */
-    public function setConfigOption(
-        string $sessionId,
-        string $configId,
-        string $value,
-        ?float $timeout = null,
-    ): array {
+    public function setConfigOption(string $sessionId, string $configId, string $value, ?float $timeout = null): array
+    {
         return $this->expectArrayResult(
             $this->call(
                 'session/set_config_option',
@@ -466,12 +446,10 @@ final class Client
      */
     public function offNotification(callable $listener): void
     {
-        $this->notificationListeners = array_values(
-            array_filter(
-                $this->notificationListeners,
-                static fn (callable $existing): bool => $existing !== $listener,
-            ),
-        );
+        $this->notificationListeners = array_values(array_filter(
+            $this->notificationListeners,
+            static fn(callable $existing): bool => $existing !== $listener,
+        ));
     }
 
     /**
@@ -491,12 +469,10 @@ final class Client
             return;
         }
 
-        $this->methodListeners[$method] = array_values(
-            array_filter(
-                $this->methodListeners[$method],
-                static fn (callable $existing): bool => $existing !== $listener,
-            ),
-        );
+        $this->methodListeners[$method] = array_values(array_filter(
+            $this->methodListeners[$method],
+            static fn(callable $existing): bool => $existing !== $listener,
+        ));
     }
 
     /**
@@ -516,12 +492,10 @@ final class Client
             return;
         }
 
-        $this->requestHandlers[$method] = array_values(
-            array_filter(
-                $this->requestHandlers[$method],
-                static fn (callable $existing): bool => $existing !== $handler,
-            ),
-        );
+        $this->requestHandlers[$method] = array_values(array_filter(
+            $this->requestHandlers[$method],
+            static fn(callable $existing): bool => $existing !== $handler,
+        ));
     }
 
     /**
@@ -634,11 +608,8 @@ final class Client
      *
      * @throws AcpException
      */
-    private function validateMcpServers(
-        string $method,
-        array $mcpServers,
-        InitializeResult $initializeResult,
-    ): void {
+    private function validateMcpServers(string $method, array $mcpServers, InitializeResult $initializeResult): void
+    {
         if (!array_is_list($mcpServers)) {
             throw new AcpException("Invalid {$method} params: mcpServers must be a list");
         }
@@ -672,9 +643,7 @@ final class Client
         $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
         $command = $this->requireStringField($method, "mcpServers[{$index}].command", $server, 'command');
         if (!Path::isAbsolutePath($command)) {
-            throw new AcpException(
-                "Invalid {$method} params: mcpServers[{$index}].command must be an absolute path",
-            );
+            throw new AcpException("Invalid {$method} params: mcpServers[{$index}].command must be an absolute path");
         }
 
         $this->requireStringListField($method, "mcpServers[{$index}].args", $server, 'args');
@@ -701,11 +670,7 @@ final class Client
 
         $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
         $this->requireStringField($method, "mcpServers[{$index}].url", $server, 'url');
-        $this->validateNameValueList(
-            $method,
-            "mcpServers[{$index}].headers",
-            $server['headers'] ?? null,
-        );
+        $this->validateNameValueList($method, "mcpServers[{$index}].headers", $server['headers'] ?? null);
     }
 
     /**
@@ -727,15 +692,11 @@ final class Client
 
         $this->requireStringField($method, "mcpServers[{$index}].name", $server, 'name');
         $this->requireStringField($method, "mcpServers[{$index}].url", $server, 'url');
-        $this->validateNameValueList(
-            $method,
-            "mcpServers[{$index}].headers",
-            $server['headers'] ?? null,
-        );
+        $this->validateNameValueList($method, "mcpServers[{$index}].headers", $server['headers'] ?? null);
     }
 
     /**
-     * @param array<mixed, mixed> $data
+     * @param array<array-key, mixed> $data
      *
      * @throws AcpException
      */
@@ -749,7 +710,7 @@ final class Client
     }
 
     /**
-     * @param array<mixed, mixed> $data
+     * @param array<array-key, mixed> $data
      *
      * @throws AcpException
      */
@@ -790,7 +751,7 @@ final class Client
      */
     private function requireObjectValue(string $method, string $label, mixed $value): array
     {
-        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+        if (!is_array($value) || $value !== [] && array_is_list($value)) {
             throw new AcpException("Invalid {$method} params: {$label} must be an object");
         }
 
@@ -939,9 +900,7 @@ final class Client
         string $capability,
     ): void {
         if (!$supported) {
-            throw new AcpException(
-                "Cannot call {$method} with {$type} content: agent did not advertise {$capability}",
-            );
+            throw new AcpException("Cannot call {$method} with {$type} content: agent did not advertise {$capability}");
         }
 
         if (!array_key_exists('data', $block) || !is_string($block['data'])) {
@@ -987,9 +946,7 @@ final class Client
         $hasText = array_key_exists('text', $resource);
         $hasBlob = array_key_exists('blob', $resource);
         if (!$hasText && !$hasBlob) {
-            throw new AcpException(
-                "Invalid {$method} params: prompt[{$index}].resource must include text or blob",
-            );
+            throw new AcpException("Invalid {$method} params: prompt[{$index}].resource must include text or blob");
         }
 
         if ($hasText && $hasBlob) {
@@ -1055,9 +1012,7 @@ final class Client
     private function expectArrayResult(mixed $result, string $method): array
     {
         if (!is_array($result)) {
-            throw new AcpException(
-                "Invalid {$method} response: result is not an object/array",
-            );
+            throw new AcpException("Invalid {$method} response: result is not an object/array");
         }
 
         /** @var array<string, mixed> $result */
@@ -1142,7 +1097,7 @@ final class Client
     private function parseJsonLine(string $message): ?array
     {
         try {
-            $data = json_decode($message, true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($message, associative: true, depth: 512, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
             return null;
         }
@@ -1213,7 +1168,7 @@ final class Client
 
         $method = $data['method'];
         if (!is_string($method)) {
-            $this->sendError($id, -32600, 'Invalid Request');
+            $this->sendError($id, -32_600, 'Invalid Request');
             return;
         }
 
@@ -1226,7 +1181,7 @@ final class Client
         $anyHandler = $this->anyRequestHandler;
 
         if ($methodHandler === null && $anyHandler === null) {
-            $this->sendError($id, -32601, "Method not found: {$method}");
+            $this->sendError($id, -32_601, "Method not found: {$method}");
             return;
         }
 
@@ -1235,13 +1190,13 @@ final class Client
             $params = [];
         }
 
+        /** @var array<string, mixed> $params */
+
         try {
-            $result = $methodHandler !== null
-                ? $methodHandler($params)
-                : $anyHandler($method, $params);
+            $result = $methodHandler !== null ? $methodHandler($params) : $anyHandler($method, $params);
             $this->sendResponse($id, $result);
         } catch (Throwable $e) {
-            $this->sendError($id, -32603, $e->getMessage());
+            $this->sendError($id, -32_603, $e->getMessage());
         }
     }
 
@@ -1259,7 +1214,7 @@ final class Client
             /** @var array<string, mixed> $params */
             $request = RequestPermission::fromArray($params);
         } catch (Throwable $e) {
-            $this->sendError($id, -32602, $e->getMessage());
+            $this->sendError($id, -32_602, $e->getMessage());
             return;
         }
 
@@ -1272,7 +1227,7 @@ final class Client
         try {
             $handler = $this->requestPermissionHandler;
             if ($handler === null) {
-                $this->sendError($id, -32601, 'Method not found: session/request_permission');
+                $this->sendError($id, -32_601, 'Method not found: session/request_permission');
                 return;
             }
 
@@ -1289,7 +1244,7 @@ final class Client
             }
 
             unset($this->pendingPermissionRequests[$key]);
-            $this->sendError($id, -32603, $e->getMessage());
+            $this->sendError($id, -32_603, $e->getMessage());
         }
     }
 

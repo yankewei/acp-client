@@ -6,6 +6,4 @@ namespace Yankewei\AcpClient\Exception;
 
 use Exception;
 
-class AcpException extends Exception
-{
-}
+class AcpException extends Exception {}

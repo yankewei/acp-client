@@ -14,8 +14,7 @@ final class Annotations
      */
     public function __construct(
         private readonly array $data,
-    ) {
-    }
+    ) {}
 
     /**
      * @throws AcpException

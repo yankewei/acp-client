@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient\Dto;
 
-use Yankewei\AcpClient\Exception\AcpException;
-
 final class Session
 {
     /**
@@ -14,8 +12,7 @@ final class Session
     public function __construct(
         private readonly ?string $sessionId,
         private readonly array $configOptions = [],
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, mixed> $data

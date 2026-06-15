@@ -8,9 +8,7 @@ use Yankewei\AcpClient\Exception\AcpException;
 
 final class Assert
 {
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * @return array<string, mixed>
@@ -19,7 +17,7 @@ final class Assert
      */
     public static function object(mixed $value, string $message): array
     {
-        if (!is_array($value) || ($value !== [] && array_is_list($value))) {
+        if (!is_array($value) || $value !== [] && array_is_list($value)) {
             throw new AcpException($message);
         }
 
@@ -104,7 +102,7 @@ final class Assert
             return null;
         }
 
-        if (!is_string($value) || !in_array($value, $allowed, true)) {
+        if (!is_string($value) || !in_array($value, $allowed, strict: true)) {
             throw new AcpException($message);
         }
 

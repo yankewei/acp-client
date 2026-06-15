@@ -17,8 +17,7 @@ final class Request
         private readonly string $method,
         private readonly int|string $id,
         private readonly array $params = [],
-    ) {
-    }
+    ) {}
 
     public static function nextId(): int
     {
