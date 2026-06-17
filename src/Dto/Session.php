@@ -26,7 +26,18 @@ final class Session
             $configOptions = [];
         }
 
-        /** @var array<int, array<string, mixed>> $configOptions */
+        $configOptions = array_map(
+            static function (mixed $option): array {
+                if (!is_array($option) || array_is_list($option)) {
+                    return [];
+                }
+
+                /** @var array<string, mixed> $option */
+                return $option;
+            },
+            $configOptions,
+        );
+
         return new self($sessionId, $configOptions);
     }
 

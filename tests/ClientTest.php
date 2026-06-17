@@ -754,7 +754,9 @@ final class ClientTest extends TestCase
         $this->expectExceptionMessage('Invalid session/prompt params: prompt must be a list of content blocks');
 
         // @phpstan-ignore argument.type (intentionally passing an associative array to verify rejection)
-        $client->sessionPrompt('sess_1', ['type' => 'text', 'text' => 'Hello']);
+        /** @var array<int, array<string, mixed>> $invalidPrompt */
+        $invalidPrompt = ['type' => 'text', 'text' => 'Hello'];
+        $client->sessionPrompt('sess_1', $invalidPrompt);
     }
 
     public function testStrictProtocolRejectsInvalidResourceLinkOptionalField(): void
@@ -1365,8 +1367,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onAnyRequest(static fn(string $method, array $params): array => ['answer' => 'fallback']);
-        $client->onRequest('permission/request', static fn(array $params): array => ['answer' => 'specific']);
+        $client->onAnyRequest(static fn(): array => ['answer' => 'fallback']);
+        $client->onRequest('permission/request', static fn(): array => ['answer' => 'specific']);
 
         $client->call('initialize');
 
@@ -1391,7 +1393,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $handler = static fn(string $method, array $params): array => ['answer' => 'fallback'];
+        $handler = static fn(): array => ['answer' => 'fallback'];
         $client->onAnyRequest($handler);
         $client->offAnyRequest($handler);
 

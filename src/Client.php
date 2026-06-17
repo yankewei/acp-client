@@ -23,6 +23,7 @@ use Yankewei\AcpClient\Exception\TransportException;
 use Yankewei\AcpClient\JsonRpc\Request;
 use Yankewei\AcpClient\JsonRpc\Response;
 use Yankewei\AcpClient\Transport\TransportInterface;
+use Yankewei\AcpClient\Util\Assert;
 use Yankewei\AcpClient\Util\Path;
 
 final class Client
@@ -40,16 +41,16 @@ final class Client
     private array $requestHandlers = [];
 
     /** @var (callable(string, array<string, mixed>): mixed)|null */
-    private $anyRequestHandler = null;
+    private mixed $anyRequestHandler = null;
 
     /** @var (callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>))|null */
-    private $requestPermissionHandler = null;
+    private mixed $requestPermissionHandler = null;
 
     /** @var (callable(ReadTextFileRequest): (ReadTextFileResult|string|array<string, mixed>))|null */
-    private $readTextFileHandler = null;
+    private mixed $readTextFileHandler = null;
 
     /** @var (callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null))|null */
-    private $writeTextFileHandler = null;
+    private mixed $writeTextFileHandler = null;
 
     /** @var array<string, array{id: int|string, sessionId: string}> */
     private array $pendingPermissionRequests = [];
@@ -1114,6 +1115,8 @@ final class Client
 
             $data = $this->parseJsonLine($line);
             if ($data !== null) {
+                $data = Assert::object($data, 'Invalid JSON-RPC message: expected an object');
+
                 $notification = $this->toNotification($data);
                 if ($notification !== null) {
                     $this->dispatch($notification);
@@ -1225,12 +1228,12 @@ final class Client
      */
     private function handleServerRequest(array $data): void
     {
-        $id = $data['id'];
+        $id = $data['id'] ?? null;
         if (!is_int($id) && !is_string($id)) {
             return;
         }
 
-        $method = $data['method'];
+        $method = $data['method'] ?? null;
         if (!is_string($method)) {
             $this->sendError($id, -32_600, 'Invalid Request');
             return;
@@ -1280,12 +1283,9 @@ final class Client
     private function handleRequestPermission(int|string $id, array $data): void
     {
         $params = $data['params'] ?? [];
-        if (!is_array($params) || array_is_list($params)) {
-            $params = [];
-        }
+        $params = Assert::object($params, 'Invalid session/request_permission params: expected an object');
 
         try {
-            /** @var array<string, mixed> $params */
             $request = RequestPermission::fromArray($params);
         } catch (Throwable $e) {
             $this->sendError($id, -32_602, $e->getMessage());
@@ -1341,12 +1341,9 @@ final class Client
     private function handleReadTextFile(int|string $id, array $data): void
     {
         $params = $data['params'] ?? [];
-        if (!is_array($params) || array_is_list($params)) {
-            $params = [];
-        }
+        $params = Assert::object($params, 'Invalid fs/read_text_file params: expected an object');
 
         try {
-            /** @var array<string, mixed> $params */
             $request = ReadTextFileRequest::fromArray($params);
         } catch (Throwable $e) {
             $this->sendError($id, -32_602, $e->getMessage());
@@ -1390,12 +1387,9 @@ final class Client
     private function handleWriteTextFile(int|string $id, array $data): void
     {
         $params = $data['params'] ?? [];
-        if (!is_array($params) || array_is_list($params)) {
-            $params = [];
-        }
+        $params = Assert::object($params, 'Invalid fs/write_text_file params: expected an object');
 
         try {
-            /** @var array<string, mixed> $params */
             $request = WriteTextFileRequest::fromArray($params);
         } catch (Throwable $e) {
             $this->sendError($id, -32_602, $e->getMessage());
