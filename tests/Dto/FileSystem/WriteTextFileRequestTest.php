@@ -55,4 +55,16 @@ final class WriteTextFileRequestTest extends TestCase
             'path' => '/repo/a.php',
         ]);
     }
+
+    public function testRejectsRelativePath(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid fs/write_text_file params: path must be an absolute path');
+
+        WriteTextFileRequest::fromArray([
+            'sessionId' => 'sess_1',
+            'path' => 'repo/a.php',
+            'content' => 'x',
+        ]);
+    }
 }

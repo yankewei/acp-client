@@ -7,10 +7,10 @@ namespace Yankewei\AcpClient\Dto\FileSystem;
 final class WriteTextFileResult
 {
     /**
-     * @return array{}
+     * @return null
      */
-    public function toResultArray(): array
+    public function toResultArray(): ?array
     {
-        return [];
+        return null;
     }
 }

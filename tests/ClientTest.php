@@ -169,6 +169,84 @@ final class ClientTest extends TestCase
         static::assertSame('ACP Client for PHP', $clientInfo['title']);
     }
 
+    public function testInitializeAdvertisesReadTextFileCapabilityWhenHandlerRegistered(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onReadTextFile(
+            static fn(ReadTextFileRequest $request): ReadTextFileResult => new ReadTextFileResult(''),
+        );
+        $client->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+        $fs = self::getArray($clientCapabilities, 'fs');
+
+        static::assertTrue($fs['readTextFile']);
+        static::assertFalse($fs['writeTextFile']);
+    }
+
+    public function testInitializeAdvertisesWriteTextFileCapabilityWhenHandlerRegistered(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onWriteTextFile(
+            static fn(WriteTextFileRequest $_request): WriteTextFileResult => new WriteTextFileResult(),
+        );
+        $client->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+        $fs = self::getArray($clientCapabilities, 'fs');
+
+        static::assertFalse($fs['readTextFile']);
+        static::assertTrue($fs['writeTextFile']);
+    }
+
+    public function testInitializeDoesNotAdvertiseFsCapabilitiesAfterHandlerRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $handler = static fn(ReadTextFileRequest $_request): ReadTextFileResult => new ReadTextFileResult('');
+        $client->onReadTextFile($handler);
+        $client->offReadTextFile($handler);
+        $client->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+        $fs = self::getArray($clientCapabilities, 'fs');
+
+        static::assertFalse($fs['readTextFile']);
+        static::assertFalse($fs['writeTextFile']);
+    }
+
     public function testAuthenticateCallsAcpMethod(): void
     {
         $transport = $this->transportWithResult(['ok' => true]);
@@ -1614,7 +1692,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
         $handler =
-            static fn(RequestPermission $request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
+            static fn(RequestPermission $_request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
 
         $client->onRequestPermission($handler);
         $client->offRequestPermission($handler);
@@ -1744,7 +1822,8 @@ final class ClientTest extends TestCase
         $response = self::decode($transport->sent[1]);
         static::assertSame('fs-1', $response['id']);
         static::assertArrayNotHasKey('error', $response);
-        static::assertSame([], $response['result']);
+        static::assertArrayHasKey('result', $response);
+        static::assertNull($response['result']);
     }
 
     public function testOnWriteTextFileRespondsWithResultDto(): void
@@ -1772,7 +1851,8 @@ final class ClientTest extends TestCase
         static::assertSame(['ok' => true], $client->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
-        static::assertSame([], $response['result']);
+        static::assertArrayHasKey('result', $response);
+        static::assertNull($response['result']);
     }
 
     public function testReadTextFileHandlerTakesPrecedenceOverGenericHandler(): void

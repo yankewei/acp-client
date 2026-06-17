@@ -95,8 +95,8 @@ final class Client
             'protocolVersion' => 1,
             'clientCapabilities' => [
                 'fs' => [
-                    'readTextFile' => false,
-                    'writeTextFile' => false,
+                    'readTextFile' => $this->readTextFileHandler !== null,
+                    'writeTextFile' => $this->writeTextFileHandler !== null,
                 ],
                 'terminal' => false,
             ],
@@ -1418,19 +1418,15 @@ final class Client
 
     /**
      * @param WriteTextFileResult|array<string, mixed>|null $result
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    private function normalizeWriteTextFileResult(WriteTextFileResult|array|null $result): array
+    private function normalizeWriteTextFileResult(WriteTextFileResult|array|null $result): ?array
     {
         if ($result instanceof WriteTextFileResult) {
             return $result->toResultArray();
         }
 
-        if (is_array($result)) {
-            return $result;
-        }
-
-        return [];
+        return $result;
     }
 
     private function cancelPendingPermissionRequests(string $sessionId): void

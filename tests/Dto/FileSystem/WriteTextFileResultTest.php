@@ -9,10 +9,10 @@ use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileResult;
 
 final class WriteTextFileResultTest extends TestCase
 {
-    public function testSerializesToEmptyResultArray(): void
+    public function testSerializesToNullResult(): void
     {
         $result = new WriteTextFileResult();
 
-        static::assertSame([], $result->toResultArray());
+        static::assertNull($result->toResultArray());
     }
 }

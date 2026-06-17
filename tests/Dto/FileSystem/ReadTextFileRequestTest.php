@@ -75,4 +75,15 @@ final class ReadTextFileRequestTest extends TestCase
             'limit' => 'fifty',
         ]);
     }
+
+    public function testRejectsRelativePath(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid fs/read_text_file params: path must be an absolute path');
+
+        ReadTextFileRequest::fromArray([
+            'sessionId' => 'sess_1',
+            'path' => 'repo/a.php',
+        ]);
+    }
 }
