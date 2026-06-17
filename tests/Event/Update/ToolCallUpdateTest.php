@@ -118,8 +118,8 @@ final class ToolCallUpdateTest extends TestCase
         static::assertCount(1, $update->getContentItems());
         $item = $update->getContentItems()[0];
         static::assertInstanceOf(ContentToolCallContent::class, $item);
-        static::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
-        static::assertSame('Analysis complete', $item->getContentBlock()->getText());
+        static::assertInstanceOf(TextContentBlock::class, $block = $item->getContentBlock());
+        static::assertSame('Analysis complete', $block->getText());
     }
 
     public function testParsesLocationWithoutLine(): void

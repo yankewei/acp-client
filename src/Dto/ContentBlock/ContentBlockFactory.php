@@ -46,17 +46,12 @@ final class ContentBlockFactory
      */
     public static function fromArrayList(mixed $list): array
     {
-        if (!is_array($list) || !array_is_list($list)) {
-            throw new AcpException('Invalid content blocks: must be a list');
-        }
+        $list = Assert::list($list, 'Invalid content blocks: must be a list');
 
         $blocks = [];
         foreach ($list as $index => $item) {
-            if (!is_array($item) || array_is_list($item)) {
-                throw new AcpException("Invalid content blocks: entry {$index} must be an object");
-            }
+            $item = Assert::object($item, "Invalid content blocks: entry {$index} must be an object");
 
-            /** @var array<string, mixed> $item */
             $blocks[] = self::fromArray($item);
         }
 

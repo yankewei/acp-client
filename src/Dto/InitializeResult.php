@@ -41,10 +41,11 @@ final class InitializeResult
         $authMethods = Assert::list($authMethods, 'Invalid initialize result: authMethods must be a list');
 
         return new self($protocolVersion, $agentCapabilities, array_map(
-            static fn(mixed $authMethod): AuthMethod => AuthMethod::fromArray(Assert::object(
-                $authMethod,
-                'Invalid initialize result: authMethods entries must be objects',
-            )),
+            static function (mixed $authMethod): AuthMethod {
+                $authMethod = Assert::object($authMethod, 'Invalid initialize result: authMethods entries must be objects');
+
+                return AuthMethod::fromArray($authMethod);
+            },
             $authMethods,
         ));
     }
@@ -164,6 +165,8 @@ final class InitializeResult
             return false;
         }
 
-        return ($capabilities[$capability] ?? false) === true;
+        $value = $capabilities[$capability] ?? false;
+
+        return $value === true;
     }
 }

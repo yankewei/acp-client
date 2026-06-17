@@ -9,16 +9,16 @@ use Yankewei\AcpClient\Exception\TransportException;
 final class StdioTransport implements TransportInterface
 {
     /** @var resource|null */
-    private $process = null;
+    private mixed $process = null;
 
     /** @var resource|null */
-    private $stdin = null;
+    private mixed $stdin = null;
 
     /** @var resource|null */
-    private $stdout = null;
+    private mixed $stdout = null;
 
     /** @var resource|null */
-    private $stderr = null;
+    private mixed $stderr = null;
 
     private string $stderrBuffer = '';
 
@@ -246,7 +246,7 @@ final class StdioTransport implements TransportInterface
     /**
      * @return resource
      */
-    private function getStdin()
+    private function getStdin(): mixed
     {
         if (!is_resource($this->stdin)) {
             throw new TransportException('Transport stdin is not open');
@@ -258,7 +258,7 @@ final class StdioTransport implements TransportInterface
     /**
      * @return resource
      */
-    private function getStdout()
+    private function getStdout(): mixed
     {
         if (!is_resource($this->stdout)) {
             throw new TransportException('Transport stdout is not open');
