@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Event\SessionInfoUpdate;
 use Yankewei\AcpClient\Event\Update\AgentMessageChunkUpdate;
+use Yankewei\AcpClient\Event\Update\AvailableCommandsUpdate;
+use Yankewei\AcpClient\Event\Update\ConfigOptionUpdate;
 use Yankewei\AcpClient\Event\Update\PlanUpdate;
 use Yankewei\AcpClient\Event\Update\SessionUpdate;
 use Yankewei\AcpClient\Event\Update\SessionUpdateMapper;
@@ -169,7 +171,11 @@ final class SessionUpdateMapperTest extends TestCase
             'update' => [
                 'sessionUpdate' => 'plan',
                 'entries' => [
-                    ['content' => 'First step'],
+                    [
+                        'content' => 'First step',
+                        'priority' => 'high',
+                        'status' => 'pending',
+                    ],
                 ],
             ],
         ]);
@@ -179,6 +185,62 @@ final class SessionUpdateMapperTest extends TestCase
         static::assertInstanceOf(PlanUpdate::class, $update);
         static::assertSame('sess_1', $update->getSessionId());
         static::assertSame('plan', $update->getUpdateType());
+    }
+
+    public function testDispatchesConfigOptionUpdate(): void
+    {
+        $notification = new Notification('session/update', [
+            'sessionId' => 'sess_1',
+            'update' => [
+                'sessionUpdate' => 'config_option_update',
+                'configOptions' => [
+                    [
+                        'id' => 'mode',
+                        'name' => 'Session Mode',
+                        'category' => 'mode',
+                        'type' => 'select',
+                        'currentValue' => 'code',
+                        'options' => [
+                            ['value' => 'ask', 'name' => 'Ask'],
+                            ['value' => 'code', 'name' => 'Code'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $update = SessionUpdateMapper::fromNotification($notification);
+
+        static::assertInstanceOf(ConfigOptionUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('config_option_update', $update->getUpdateType());
+        static::assertSame('mode', $update->getConfigOptionObjects()[0]->getId());
+        static::assertSame('code', $update->getConfigOptionObjects()[0]->getCurrentValue());
+    }
+
+    public function testDispatchesAvailableCommandsUpdate(): void
+    {
+        $notification = new Notification('session/update', [
+            'sessionId' => 'sess_1',
+            'update' => [
+                'sessionUpdate' => 'available_commands_update',
+                'availableCommands' => [
+                    [
+                        'name' => 'web',
+                        'description' => 'Search the web for information',
+                        'input' => ['hint' => 'query to search for'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $update = SessionUpdateMapper::fromNotification($notification);
+
+        static::assertInstanceOf(AvailableCommandsUpdate::class, $update);
+        static::assertSame('sess_1', $update->getSessionId());
+        static::assertSame('available_commands_update', $update->getUpdateType());
+        static::assertSame('web', $update->getAvailableCommandObjects()[0]->getName());
+        static::assertSame('query to search for', $update->getAvailableCommandObjects()[0]->getInput()?->getHint());
     }
 
     public function testRejectsMissingSessionId(): void

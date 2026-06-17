@@ -59,7 +59,7 @@ $transport = new StdioTransport([
 $client = new Client($transport, 30.0);
 
 try {
-    $initialize = $client->initialize([
+    $initialize = $client->acp()->initialize([
         "clientInfo" => [
             "name" => "acp-client-kimi-smoke",
             "title" => "ACP Client Kimi Smoke Test",
@@ -73,7 +73,7 @@ try {
     ]);
 
     /** @var Session $session */
-    $session = runStep("sessionNew()", fn() => $client->sessionNew(getcwd()));
+    $session = runStep("sessionNew()", fn() => $client->acp()->sessionNew(getcwd()));
     if (!$session instanceof Session) {
         throw new RuntimeException("sessionNew() did not return a session");
     }
@@ -86,7 +86,7 @@ try {
     if (agentSupports($initialize, "list")) {
         runStep(
             "sessionList()",
-            fn() => $client->sessionList(getcwd()),
+            fn() => $client->acp()->sessionList(getcwd()),
         );
     } else {
         echo "\n== sessionList() ==\nskipped: Kimi did not advertise sessionCapabilities.list\n";
@@ -95,7 +95,7 @@ try {
     if (agentSupports($initialize, "resume")) {
         runStep(
             "sessionResume()",
-            fn() => $client->sessionResume($sessionId, getcwd()),
+            fn() => $client->acp()->sessionResume($sessionId, getcwd()),
         );
     } else {
         echo "\n== sessionResume() ==\nskipped: Kimi did not advertise sessionCapabilities.resume\n";
@@ -104,7 +104,7 @@ try {
     if (($initialize->getAgentCapabilities()["loadSession"] ?? false) === true) {
         runStep(
             "sessionLoad()",
-            fn() => $client->sessionLoad($sessionId, getcwd()),
+            fn() => $client->acp()->sessionLoad($sessionId, getcwd()),
         );
     } else {
         echo "\n== sessionLoad() ==\nskipped: Kimi did not advertise loadSession\n";
@@ -121,7 +121,7 @@ try {
     if (is_array($modeConfig) && is_string($modeConfig["currentValue"] ?? null)) {
         runStep(
             "setConfigOption()",
-            fn() => $client->setConfigOption(
+            fn() => $client->acp()->setConfigOption(
                 $sessionId,
                 "mode",
                 $modeConfig["currentValue"],
@@ -133,7 +133,7 @@ try {
 
     runStep(
         "sessionPrompt()",
-        fn() => $client->sessionPrompt(
+        fn() => $client->acp()->sessionPrompt(
             $sessionId,
             "Reply with exactly: acp-client smoke test ok",
             120.0,
@@ -141,14 +141,14 @@ try {
     );
 
     echo "\n== sessionCancel() ==\n";
-    $client->sessionCancel($sessionId);
+    $client->acp()->sessionCancel($sessionId);
     echo "sent notification\n";
 
     echo "\n== intentionally skipped ==\n";
     echo "- authenticate(): may start Kimi terminal/device login\n";
     echo "- logout(): would log out the local Kimi account\n";
     echo "- sessionDelete(): would remove a session from history if supported\n";
-    echo "- sessionClose()/setMode(): Kimi did not advertise those legacy capabilities in this run\n";
+    echo "- sessionClose(): Kimi did not advertise this legacy capability in this run\n";
 } catch (JsonRpcException $e) {
     fwrite(
         STDERR,

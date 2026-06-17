@@ -25,7 +25,6 @@ final class Annotations
             return null;
         }
 
-        /** @var array<string, mixed> $validated */
         $validated = Assert::object($data, $message);
 
         return new self($validated);

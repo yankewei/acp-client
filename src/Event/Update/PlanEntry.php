@@ -9,10 +9,14 @@ use Yankewei\AcpClient\Util\Assert;
 
 final class PlanEntry
 {
+    private const PRIORITIES = ['high', 'medium', 'low'];
+
+    private const STATUSES = ['pending', 'in_progress', 'completed'];
+
     public function __construct(
         private readonly string $content,
-        private readonly ?string $priority,
-        private readonly ?string $status,
+        private readonly string $priority,
+        private readonly string $status,
     ) {}
 
     /**
@@ -24,9 +28,19 @@ final class PlanEntry
     {
         $content = Assert::requiredString($data, 'content', 'Invalid plan entry: content must be a string');
 
-        $priority = Assert::optionalString($data, 'priority', 'Invalid plan entry: priority must be a string or null');
+        $priority = Assert::requiredStringInEnum(
+            $data,
+            'priority',
+            self::PRIORITIES,
+            'Invalid plan entry: priority must be one of high, medium, low',
+        );
 
-        $status = Assert::optionalString($data, 'status', 'Invalid plan entry: status must be a string or null');
+        $status = Assert::requiredStringInEnum(
+            $data,
+            'status',
+            self::STATUSES,
+            'Invalid plan entry: status must be one of pending, in_progress, completed',
+        );
 
         return new self($content, $priority, $status);
     }
@@ -36,12 +50,12 @@ final class PlanEntry
         return $this->content;
     }
 
-    public function getPriority(): ?string
+    public function getPriority(): string
     {
         return $this->priority;
     }
 
-    public function getStatus(): ?string
+    public function getStatus(): string
     {
         return $this->status;
     }

@@ -111,6 +111,25 @@ final class Assert
 
     /**
      * @param array<string, mixed> $data
+     * @param string[] $allowed
+     *
+     * @throws AcpException
+     */
+    public static function requiredStringInEnum(array $data, string $key, array $allowed, string $message): string
+    {
+        if (!array_key_exists($key, $data) || !is_string($data[$key])) {
+            throw new AcpException($message);
+        }
+
+        if (!in_array($data[$key], $allowed, strict: true)) {
+            throw new AcpException($message);
+        }
+
+        return $data[$key];
+    }
+
+    /**
+     * @param array<string, mixed> $data
      *
      * @throws AcpException
      */

@@ -5,10 +5,11 @@ A minimal PHP client for the [Agent Client Protocol (ACP)](https://agentclientpr
 ## Features
 
 - JSON-RPC 2.0 request/response over stdio
-- Transport interface ready for HTTP/WebSocket extensions
+- Transport interface for custom transports
 - Synchronous, blocking API
 - Supports any JSON-RPC result type from `Client::call()`
 - Skips server-initiated JSON-RPC notifications while waiting for a response
+- Typed `session/update` support for tool calls, plans, config options, and slash commands
 - Built-in timeout handling
 - Stdio process error messages include captured stderr when available
 - PHPUnit tests
@@ -23,6 +24,7 @@ composer require yankewei/acp-client
 
 ```php
 use Yankewei\AcpClient\Client;
+use Yankewei\AcpClient\Transport\StreamableHttpTransport;
 use Yankewei\AcpClient\Transport\StdioTransport;
 
 $transport = new StdioTransport([
@@ -52,15 +54,23 @@ Typed convenience methods are available for stable ACP v1 calls:
 - `sessionList($cwd = null, $cursor = null)`
 - `sessionDelete($sessionId)`
 - `sessionPrompt($sessionId, $prompt)`
+- `sessionSlashCommand($sessionId, $command, $input = null)`
 - `sessionCancel($sessionId)`
 - `setConfigOption($sessionId, $configId, $value)`
-- `setMode($sessionId, $modeId)` for agents that still expose legacy modes
 
 High-level methods return typed value objects (DTOs) such as `InitializeResult`,
-`Session`, `SessionListResult`, and `PromptResult`. The lower-level
-`Client::call()` and `Client::notify()` methods remain available for
+`Session`, `SessionListResult`, `SessionConfigOptionsResult`, and `PromptResult`.
+Session mode selectors should be read from `Session::getConfigOptionObjects()`
+where `category === "mode"` and changed with `setConfigOption($sessionId, "mode", $value)`.
+Slash commands advertised by the agent are exposed through
+`AvailableCommandsUpdate`; running one is just a `session/prompt` turn, wrapped
+by `sessionSlashCommand($sessionId, "web", "agent client protocol")`.
+The lower-level `Client::rpc()->call()` and `Client::rpc()->notify()` methods remain available for
 agent-specific extensions and ACP methods not yet wrapped by this library, and
 still return raw arrays/mixed values as the escape hatch.
+For ACP extension methods, `Client::rpc()->callExtension()` and
+`Client::rpc()->notifyExtension()` enforce the protocol rule that custom method
+names start with `_`.
 
 `PromptResult::getStopReason()` returns the required ACP stop reason string.
 Use helpers such as `isEndTurn()` and `isCancelled()` for common branches.
@@ -128,6 +138,36 @@ JSON-RPC params:
 $client = new Client($transport, strictProtocol: false);
 ```
 
+## Extensibility
+
+ACP extension data belongs in `_meta`, not in ad-hoc root fields. Raw JSON-RPC
+calls can include `_meta` in params directly, and `sessionPrompt()` accepts a
+root `_meta` array for common tracing/correlation data:
+
+```php
+$client->acp()->sessionPrompt('sess_1', 'Hello', meta: [
+    'traceparent' => '00-80e1afed08e019fc1110464cfa66635c-7a085853722dc6d2-01',
+    'zed.dev/debugMode' => true,
+]);
+```
+
+Custom request and notification methods must start with `_`:
+
+```php
+$buffers = $client->rpc()->callExtension('_zed.dev/workspace/buffers', [
+    'language' => 'rust',
+]);
+
+$client->rpc()->notifyExtension('_zed.dev/file_opened', [
+    'path' => '/repo/src/main.rs',
+]);
+```
+
+Server-initiated extension requests can be handled with
+`onRequest('_vendor/feature', ...)` or `onAnyRequest(...)`. Unknown requests
+receive JSON-RPC method-not-found; unknown notifications are ignored unless a
+listener is registered.
+
 ## Kimi ACP smoke test
 
 If you have Kimi Code installed locally, you can test the stdio transport with:
@@ -169,6 +209,7 @@ update objects:
 use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Event\Update\SessionUpdateMapper;
 use Yankewei\AcpClient\Event\Update\AgentMessageChunkUpdate;
+use Yankewei\AcpClient\Event\Update\AvailableCommandsUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallStatusUpdate;
 
@@ -177,6 +218,7 @@ $client->on('session/update', function (Notification $notification): void {
 
     match (true) {
         $update instanceof AgentMessageChunkUpdate => handleMessageChunk($update),
+        $update instanceof AvailableCommandsUpdate => replaceSlashCommands($update->getAvailableCommandObjects()),
         $update instanceof ToolCallUpdate => handleToolCall($update),
         $update instanceof ToolCallStatusUpdate => handleToolCallUpdate($update),
         default => null,
@@ -255,6 +297,36 @@ $client->onRequestPermission(function (RequestPermission $request): RequestPermi
 If `sessionCancel($sessionId)` is called while a `session/request_permission`
 handler is still pending for the same session, the client sends the ACP-required
 `cancelled` permission outcome and suppresses any later handler result.
+
+## Transports
+
+ACP v1 defines stdio as the stable transport. `StdioTransport` launches the
+agent subprocess, sends one UTF-8 JSON-RPC message per newline-delimited line,
+rejects embedded newlines, reads responses from stdout, and captures stderr for
+diagnostics.
+
+`StreamableHttpTransport` is available for agents that already expose the draft
+HTTP transport shape. It sends each JSON-RPC message as an HTTP `POST` with
+`Content-Type: application/json`, accepts `application/json` or
+`text/event-stream`, and queues JSON-RPC messages from JSON or SSE `data:`
+responses:
+
+```php
+$transport = new StreamableHttpTransport([
+    'url' => 'https://agent.example/acp',
+    'headers' => [
+        'Authorization' => 'Bearer token',
+    ],
+]);
+```
+
+Because ACP Streamable HTTP is still marked as a draft in the protocol
+documentation, this transport keeps policy small and leaves deployment-specific
+auth, retries, and long-lived streaming semantics to custom transport
+implementations.
+
+Custom transports can implement `TransportInterface` as long as they preserve
+ACP's JSON-RPC message format and request/response lifecycle.
 
 ## Errors
 

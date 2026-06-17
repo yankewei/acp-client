@@ -7,7 +7,7 @@ namespace Yankewei\AcpClient\Dto;
 final class Session
 {
     /**
-     * @param array<int, array<string, mixed>> $configOptions
+     * @param ConfigOption[] $configOptions
      */
     public function __construct(
         private readonly ?string $sessionId,
@@ -21,12 +21,10 @@ final class Session
     {
         $sessionId = DtoHelper::optionalString($data, 'sessionId');
 
-        $configOptions = $data['configOptions'] ?? [];
-        if (!is_array($configOptions) || !array_is_list($configOptions)) {
-            $configOptions = [];
-        }
+        $configOptions = array_key_exists('configOptions', $data)
+            ? ConfigOption::listFromArray($data['configOptions'])
+            : [];
 
-        /** @var array<int, array<string, mixed>> $configOptions */
         return new self($sessionId, $configOptions);
     }
 
@@ -36,10 +34,32 @@ final class Session
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return list<array<string, mixed>>
      */
     public function getConfigOptions(): array
     {
+        return array_values(array_map(
+            static fn(ConfigOption $option): array => $option->toArray(),
+            $this->configOptions,
+        ));
+    }
+
+    /**
+     * @return ConfigOption[]
+     */
+    public function getConfigOptionObjects(): array
+    {
         return $this->configOptions;
+    }
+
+    public function getConfigOption(string $id): ?ConfigOption
+    {
+        foreach ($this->configOptions as $option) {
+            if ($option->getId() === $id) {
+                return $option;
+            }
+        }
+
+        return null;
     }
 }

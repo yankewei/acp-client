@@ -65,12 +65,7 @@ final class ClientTest extends TestCase
      */
     private static function paramsOf(array $sent): array
     {
-        self::assertIsArray($sent['params']);
-
-        /** @var array<string, mixed> $params */
-        $params = $sent['params'];
-
-        return $params;
+        return self::objectArray($sent['params']);
     }
 
     /**
@@ -80,11 +75,18 @@ final class ClientTest extends TestCase
      */
     private static function getArray(array $array, string $key): array
     {
-        self::assertIsArray($array[$key]);
+        return self::objectArray($array[$key]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function objectArray(mixed $value): array
+    {
+        self::assertIsArray($value);
+        self::assertFalse(array_is_list($value));
 
         /** @var array<string, mixed> $value */
-        $value = $array[$key];
-
         return $value;
     }
 
@@ -99,7 +101,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $result = $client->call('initialize');
+        $result = $client->rpc()->call('initialize');
 
         static::assertSame(['status' => 'ok'], $result);
         static::assertCount(1, $transport->sent);
@@ -124,7 +126,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $result = $client->initialize();
+        $result = $client->acp()->initialize();
         static::assertSame(1, $result->getProtocolVersion());
         static::assertSame([], $result->getAgentCapabilities());
 
@@ -157,7 +159,7 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->initialize([
+        $client->acp()->initialize([
             'clientCapabilities' => [
                 'terminal' => true,
             ],
@@ -190,10 +192,12 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onReadTextFile(
-            static fn(ReadTextFileRequest $request): ReadTextFileResult => new ReadTextFileResult(''),
-        );
-        $client->initialize();
+        $client
+            ->requests()
+            ->onReadTextFile(
+                static fn(ReadTextFileRequest $_request): ReadTextFileResult => new ReadTextFileResult(''),
+            );
+        $client->acp()->initialize();
 
         $sent = self::decode($transport->sent[0]);
         $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
@@ -216,10 +220,12 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onWriteTextFile(
-            static fn(WriteTextFileRequest $_request): WriteTextFileResult => new WriteTextFileResult(),
-        );
-        $client->initialize();
+        $client
+            ->requests()
+            ->onWriteTextFile(
+                static fn(WriteTextFileRequest $_request): WriteTextFileResult => new WriteTextFileResult(),
+            );
+        $client->acp()->initialize();
 
         $sent = self::decode($transport->sent[0]);
         $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
@@ -243,9 +249,9 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
         $handler = static fn(ReadTextFileRequest $_request): ReadTextFileResult => new ReadTextFileResult('');
-        $client->onReadTextFile($handler);
-        $client->offReadTextFile($handler);
-        $client->initialize();
+        $client->requests()->onReadTextFile($handler);
+        $client->requests()->offReadTextFile($handler);
+        $client->acp()->initialize();
 
         $sent = self::decode($transport->sent[0]);
         $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
@@ -268,12 +274,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalCreate(
-            static fn(TerminalCreateRequest $_request): TerminalCreateResult => TerminalCreateResult::fromTerminalId(
-                'term_1',
-            ),
-        );
-        $client->initialize();
+        $client
+            ->requests()
+            ->onTerminalCreate(
+                static fn(TerminalCreateRequest $_request): TerminalCreateResult => TerminalCreateResult::fromTerminalId(
+                    'term_1',
+                ),
+            );
+        $client->acp()->initialize();
 
         $sent = self::decode($transport->sent[0]);
         $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
@@ -298,9 +306,9 @@ final class ClientTest extends TestCase
             static fn(TerminalCreateRequest $_request): TerminalCreateResult => TerminalCreateResult::fromTerminalId(
                 'term_1',
             );
-        $client->onTerminalCreate($handler);
-        $client->offTerminalCreate($handler);
-        $client->initialize();
+        $client->requests()->onTerminalCreate($handler);
+        $client->requests()->offTerminalCreate($handler);
+        $client->acp()->initialize();
 
         $sent = self::decode($transport->sent[0]);
         $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
@@ -313,7 +321,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['ok' => true]);
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['ok' => true], $client->authenticate('login'));
+        static::assertSame(['ok' => true], $client->acp()->authenticate('login'));
 
         $sent = $this->sentMessage($transport);
         static::assertSame('authenticate', $sent['method']);
@@ -344,9 +352,9 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
-        static::assertSame([], $client->authenticate('login'));
+        static::assertSame([], $client->acp()->authenticate('login'));
 
         $sent = self::decode($transport->sent[1]);
         static::assertSame('authenticate', $sent['method']);
@@ -357,12 +365,12 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call authenticate: agent did not advertise auth method login');
 
-        $client->authenticate('login');
+        $client->acp()->authenticate('login');
     }
 
     public function testStrictProtocolRequiresInitializeBeforeAuthenticate(): void
@@ -372,7 +380,7 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call authenticate before initialize() in strict protocol mode');
 
-        $client->authenticate('login');
+        $client->acp()->authenticate('login');
     }
 
     public function testLogoutCallsAcpMethod(): void
@@ -380,7 +388,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame([], $client->logout());
+        static::assertSame([], $client->acp()->logout());
 
         $sent = $this->sentMessage($transport);
         static::assertSame('logout', $sent['method']);
@@ -392,7 +400,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['sessionId' => 'sess_1']);
         $client = new Client($transport, 1.0, false);
 
-        $session = $client->sessionNew('/repo', [['name' => 'fs']], ['/shared']);
+        $session = $client->acp()->sessionNew('/repo', [['name' => 'fs']], ['/shared']);
         static::assertSame('sess_1', $session->getSessionId());
 
         $sent = $this->sentMessage($transport);
@@ -407,7 +415,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(null);
         $client = new Client($transport, 1.0, false);
 
-        static::assertNull($client->sessionLoad('sess_1', '/repo'));
+        static::assertNull($client->acp()->sessionLoad('sess_1', '/repo'));
 
         $sent = $this->sentMessage($transport);
         static::assertSame('session/load', $sent['method']);
@@ -422,7 +430,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['ready' => true]);
         $client = new Client($transport, 1.0, false);
 
-        $session = $client->sessionResume('sess_1', '/repo');
+        $session = $client->acp()->sessionResume('sess_1', '/repo');
         static::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
@@ -436,7 +444,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0, false);
 
-        $session = $client->sessionClose('sess_1');
+        $session = $client->acp()->sessionClose('sess_1');
         static::assertNull($session->getSessionId());
 
         $sent = $this->sentMessage($transport);
@@ -451,7 +459,7 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/new before initialize() in strict protocol mode');
 
-        $client->sessionNew('/repo');
+        $client->acp()->sessionNew('/repo');
     }
 
     public function testStrictProtocolIsEnabledByDefault(): void
@@ -461,7 +469,7 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/new before initialize() in strict protocol mode');
 
-        $client->sessionNew('/repo');
+        $client->acp()->sessionNew('/repo');
     }
 
     public function testStrictProtocolAllowsAdvertisedSessionSetup(): void
@@ -490,8 +498,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
-        $session = $client->sessionNew(
+        $client->acp()->initialize();
+        $session = $client->acp()->sessionNew(
             '/repo',
             [
                 [
@@ -523,74 +531,74 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/new params: cwd must be an absolute path');
 
-        $client->sessionNew('repo');
+        $client->acp()->sessionNew('repo');
     }
 
     public function testStrictProtocolRejectsAdditionalDirectoriesWithoutCapability(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage(
             'Cannot call session/new with additionalDirectories: agent did not advertise sessionCapabilities.additionalDirectories',
         );
 
-        $client->sessionNew('/repo', [], ['/shared']);
+        $client->acp()->sessionNew('/repo', [], ['/shared']);
     }
 
     public function testStrictProtocolRejectsLoadResumeAndCloseWithoutCapabilities(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/load: agent did not advertise loadSession');
 
-        $client->sessionLoad('sess_1', '/repo');
+        $client->acp()->sessionLoad('sess_1', '/repo');
     }
 
     public function testStrictProtocolRejectsResumeWithoutCapability(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/resume: agent did not advertise sessionCapabilities.resume');
 
-        $client->sessionResume('sess_1', '/repo');
+        $client->acp()->sessionResume('sess_1', '/repo');
     }
 
     public function testStrictProtocolRejectsCloseWithoutCapability(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/close: agent did not advertise sessionCapabilities.close');
 
-        $client->sessionClose('sess_1');
+        $client->acp()->sessionClose('sess_1');
     }
 
     public function testStrictProtocolRejectsInvalidMcpServerShape(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/new params: mcpServers[0].command must be an absolute path');
 
-        $client->sessionNew('/repo', [
+        $client->acp()->sessionNew('/repo', [
             [
                 'name' => 'filesystem',
                 'command' => 'mcp-server',
@@ -603,14 +611,14 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage(
             'Invalid session/new params: mcpServers[0].env must be a list of name/value objects',
         );
 
-        $client->sessionNew('/repo', [
+        $client->acp()->sessionNew('/repo', [
             [
                 'name' => 'filesystem',
                 'command' => '/usr/local/bin/mcp-server',
@@ -623,14 +631,14 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0, true);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage(
             'Cannot call session/new with HTTP MCP server: agent did not advertise mcpCapabilities.http',
         );
 
-        $client->sessionNew('/repo', [
+        $client->acp()->sessionNew('/repo', [
             [
                 'type' => 'http',
                 'name' => 'api',
@@ -645,7 +653,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['sessions' => [], 'nextCursor' => 'next']);
         $client = new Client($transport, 1.0, false);
 
-        $result = $client->sessionList('/repo', 'cursor');
+        $result = $client->acp()->sessionList('/repo', 'cursor');
         static::assertSame([], $result->getSessions());
         static::assertSame('next', $result->getNextCursor());
 
@@ -661,19 +669,19 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/list before initialize() in strict protocol mode');
 
-        $client->sessionList();
+        $client->acp()->sessionList();
     }
 
     public function testStrictProtocolRejectsSessionListWithoutCapability(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/list: agent did not advertise sessionCapabilities.list');
 
-        $client->sessionList();
+        $client->acp()->sessionList();
     }
 
     public function testStrictProtocolRejectsRelativeSessionListCwd(): void
@@ -682,12 +690,12 @@ final class ClientTest extends TestCase
             'sessionCapabilities' => ['list' => []],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/list params: cwd must be an absolute path');
 
-        $client->sessionList('repo');
+        $client->acp()->sessionList('repo');
     }
 
     public function testStrictProtocolAllowsAdvertisedSessionList(): void
@@ -718,8 +726,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0);
-        $client->initialize();
-        $result = $client->sessionList('/repo', 'cursor');
+        $client->acp()->initialize();
+        $result = $client->acp()->sessionList('/repo', 'cursor');
 
         static::assertSame('sess_1', $result->getSessionInfos()[0]->getSessionId());
 
@@ -733,7 +741,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult([]);
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame([], $client->sessionDelete('sess_1'));
+        static::assertSame([], $client->acp()->sessionDelete('sess_1'));
 
         $sent = $this->sentMessage($transport);
         static::assertSame('session/delete', $sent['method']);
@@ -747,19 +755,19 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/delete before initialize() in strict protocol mode');
 
-        $client->sessionDelete('sess_1');
+        $client->acp()->sessionDelete('sess_1');
     }
 
     public function testStrictProtocolRejectsSessionDeleteWithoutCapability(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/delete: agent did not advertise sessionCapabilities.delete');
 
-        $client->sessionDelete('sess_1');
+        $client->acp()->sessionDelete('sess_1');
     }
 
     public function testSessionPromptAcceptsText(): void
@@ -767,7 +775,7 @@ final class ClientTest extends TestCase
         $transport = $this->transportWithResult(['stopReason' => 'end_turn']);
         $client = new Client($transport, 1.0, false);
 
-        $result = $client->sessionPrompt('sess_1', 'Hello');
+        $result = $client->acp()->sessionPrompt('sess_1', 'Hello');
         static::assertSame('end_turn', $result->getStopReason());
 
         $sent = $this->sentMessage($transport);
@@ -785,10 +793,68 @@ final class ClientTest extends TestCase
             ['type' => 'resource', 'resource' => ['uri' => 'file:///repo/a.php']],
         ];
 
-        $client->sessionPrompt('sess_1', $prompt);
+        $client->acp()->sessionPrompt('sess_1', $prompt);
 
         $sent = $this->sentMessage($transport);
         static::assertSame($prompt, self::paramsOf($sent)['prompt']);
+    }
+
+    public function testSessionPromptIncludesMeta(): void
+    {
+        $transport = $this->transportWithResult(['stopReason' => 'end_turn']);
+        $client = new Client($transport, 1.0, false);
+
+        $client->acp()->sessionPrompt('sess_1', 'Hello', meta: [
+            'traceparent' => '00-80e1afed08e019fc1110464cfa66635c-7a085853722dc6d2-01',
+            'zed.dev/debugMode' => true,
+        ]);
+
+        $sent = $this->sentMessage($transport);
+        static::assertSame('session/prompt', $sent['method']);
+        static::assertSame(
+            [
+                'traceparent' => '00-80e1afed08e019fc1110464cfa66635c-7a085853722dc6d2-01',
+                'zed.dev/debugMode' => true,
+            ],
+            self::paramsOf($sent)['_meta'],
+        );
+    }
+
+    public function testSessionPromptRejectsListMeta(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0, false);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid session/prompt params: _meta must be an object');
+
+        $client->acp()->sessionPrompt('sess_1', 'Hello', meta: ['traceparent']);
+    }
+
+    public function testSessionSlashCommandUsesSessionPrompt(): void
+    {
+        $transport = $this->transportWithResult(['stopReason' => 'end_turn']);
+        $client = new Client($transport, 1.0, false);
+
+        $result = $client->acp()->sessionSlashCommand('sess_1', '/web', 'agent client protocol');
+        static::assertSame('end_turn', $result->getStopReason());
+
+        $sent = $this->sentMessage($transport);
+        static::assertSame('session/prompt', $sent['method']);
+        static::assertSame('sess_1', self::paramsOf($sent)['sessionId']);
+        static::assertSame(
+            [['type' => 'text', 'text' => '/web agent client protocol']],
+            self::paramsOf($sent)['prompt'],
+        );
+    }
+
+    public function testSessionSlashCommandRejectsEmptyCommand(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0, false);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid slash command: command must not be empty');
+
+        $client->acp()->sessionSlashCommand('sess_1', '/');
     }
 
     public function testStrictProtocolRequiresInitializeBeforeSessionPrompt(): void
@@ -798,7 +864,7 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Cannot call session/prompt before initialize() in strict protocol mode');
 
-        $client->sessionPrompt('sess_1', 'Hello');
+        $client->acp()->sessionPrompt('sess_1', 'Hello');
     }
 
     public function testStrictProtocolAcceptsPromptCapabilities(): void
@@ -817,8 +883,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0);
-        $client->initialize();
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->initialize();
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png', 'annotations' => []],
             ['type' => 'audio', 'data' => 'base64-audio', 'mimeType' => 'audio/mpeg'],
             ['type' => 'resource', 'resource' => ['uri' => 'file:///repo/a.php', 'text' => 'contents']],
@@ -838,8 +904,8 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0);
-        $client->initialize();
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->initialize();
+        $client->acp()->sessionPrompt('sess_1', [
             [
                 'type' => 'resource_link',
                 'uri' => 'file:///repo/a.php',
@@ -859,14 +925,14 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage(
             'Cannot call session/prompt with image content: agent did not advertise promptCapabilities.image',
         );
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png'],
         ]);
     }
@@ -875,37 +941,38 @@ final class ClientTest extends TestCase
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].text must be a string');
 
-        $client->sessionPrompt('sess_1', [['type' => 'text']]);
+        $client->acp()->sessionPrompt('sess_1', [['type' => 'text']]);
     }
 
     public function testStrictProtocolRejectsNonListPromptArray(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt must be a list of content blocks');
 
-        // @phpstan-ignore argument.type (intentionally passing an associative array to verify rejection)
-        $client->sessionPrompt('sess_1', ['type' => 'text', 'text' => 'Hello']);
+        /** @var array<int, array<string, mixed>> $prompt */
+        $prompt = ['type' => 'text', 'text' => 'Hello'];
+        $client->acp()->sessionPrompt('sess_1', $prompt);
     }
 
     public function testStrictProtocolRejectsInvalidResourceLinkOptionalField(): void
     {
         $transport = $this->initializedStrictTransport([]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].size must be an integer');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'resource_link', 'uri' => 'file:///repo/a.php', 'name' => 'a.php', 'size' => '123'],
         ]);
     }
@@ -916,12 +983,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['embeddedContext' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].resource.uri must be a string');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'resource', 'resource' => ['text' => 'contents']],
         ]);
     }
@@ -932,12 +999,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['embeddedContext' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].resource must include text or blob');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'resource', 'resource' => ['uri' => 'file:///repo/a.php']],
         ]);
     }
@@ -948,12 +1015,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['image' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].data must be a string');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'image', 'mimeType' => 'image/png'],
         ]);
     }
@@ -964,12 +1031,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['audio' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].mimeType must be a string');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'audio', 'data' => 'base64-audio'],
         ]);
     }
@@ -980,12 +1047,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['image' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].annotations must be an object');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             [
                 'type' => 'image',
                 'data' => 'base64-image',
@@ -1001,12 +1068,12 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['image' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid session/prompt params: prompt[0].uri must be a string');
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             ['type' => 'image', 'data' => 'base64-image', 'mimeType' => 'image/png', 'uri' => 123],
         ]);
     }
@@ -1017,14 +1084,14 @@ final class ClientTest extends TestCase
             'promptCapabilities' => ['embeddedContext' => true],
         ]);
         $client = new Client($transport, 1.0);
-        $client->initialize();
+        $client->acp()->initialize();
 
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage(
             'Invalid session/prompt params: prompt[0].resource cannot include both text and blob',
         );
 
-        $client->sessionPrompt('sess_1', [
+        $client->acp()->sessionPrompt('sess_1', [
             [
                 'type' => 'resource',
                 'resource' => [
@@ -1041,7 +1108,7 @@ final class ClientTest extends TestCase
         $transport = new FakeTransport();
         $client = new Client($transport, 1.0, false);
 
-        $client->sessionCancel('sess_1');
+        $client->acp()->sessionCancel('sess_1');
 
         $sent = $this->sentMessage($transport);
         static::assertSame('session/cancel', $sent['method']);
@@ -1051,26 +1118,56 @@ final class ClientTest extends TestCase
 
     public function testSetConfigOptionCallsAcpMethod(): void
     {
-        $transport = $this->transportWithResult(['configOptions' => []]);
+        $transport = $this->transportWithResult([
+            'configOptions' => [
+                [
+                    'id' => 'mode',
+                    'name' => 'Session Mode',
+                    'type' => 'select',
+                    'currentValue' => 'code',
+                    'options' => [
+                        ['value' => 'code', 'name' => 'Code'],
+                    ],
+                ],
+            ],
+        ]);
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['configOptions' => []], $client->setConfigOption('sess_1', 'mode', 'code'));
+        $result = $client->acp()->setConfigOption('sess_1', 'mode', 'code');
+
+        static::assertSame('mode', $result->getConfigOptionObjects()[0]->getId());
+        static::assertSame('code', $result->getConfigOptionObjects()[0]->getCurrentValue());
 
         $sent = $this->sentMessage($transport);
         static::assertSame('session/set_config_option', $sent['method']);
         static::assertSame(['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'], $sent['params']);
     }
 
-    public function testSetModeCallsAcpMethod(): void
+    public function testSetModeUsesModeConfigOption(): void
     {
-        $transport = $this->transportWithResult(['currentModeId' => 'code']);
+        $transport = $this->transportWithResult([
+            'configOptions' => [
+                [
+                    'id' => 'mode',
+                    'name' => 'Session Mode',
+                    'type' => 'select',
+                    'currentValue' => 'code',
+                    'options' => [
+                        ['value' => 'code', 'name' => 'Code'],
+                    ],
+                ],
+            ],
+        ]);
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['currentModeId' => 'code'], $client->setMode('sess_1', 'code'));
+        $result = $client->acp()->setMode('sess_1', 'code');
+
+        static::assertSame('mode', $result->getConfigOptionObjects()[0]->getId());
+        static::assertSame('code', $result->getConfigOptionObjects()[0]->getCurrentValue());
 
         $sent = $this->sentMessage($transport);
-        static::assertSame('session/set_mode', $sent['method']);
-        static::assertSame(['sessionId' => 'sess_1', 'modeId' => 'code'], $sent['params']);
+        static::assertSame('session/set_config_option', $sent['method']);
+        static::assertSame(['sessionId' => 'sess_1', 'configId' => 'mode', 'value' => 'code'], $sent['params']);
     }
 
     public function testCallReturnsScalarResult(): void
@@ -1084,7 +1181,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame('pong', $client->call('ping'));
+        static::assertSame('pong', $client->rpc()->call('ping'));
     }
 
     public function testCallSkipsServerNotification(): void
@@ -1103,7 +1200,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['status' => 'ok'], $client->call('initialize'));
+        static::assertSame(['status' => 'ok'], $client->rpc()->call('initialize'));
     }
 
     public function testCallKeepsUnmatchedResponseForLater(): void
@@ -1122,8 +1219,8 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['first' => true], $client->call('first'));
-        static::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->rpc()->call('first'));
+        static::assertSame(['second' => true], $client->rpc()->call('second'));
     }
 
     public function testCallThrowsOnJsonRpcError(): void
@@ -1143,7 +1240,7 @@ final class ClientTest extends TestCase
         $this->expectException(JsonRpcException::class);
         $this->expectExceptionMessage('Invalid Request');
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
     }
 
     public function testCallThrowsOnInvalidJsonRpcResponse(): void
@@ -1161,7 +1258,7 @@ final class ClientTest extends TestCase
         $this->expectException(AcpException::class);
         $this->expectExceptionMessage('Invalid JSON-RPC response');
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
     }
 
     public function testCallTimesOut(): void
@@ -1172,7 +1269,7 @@ final class ClientTest extends TestCase
         $this->expectException(TransportException::class);
         $this->expectExceptionMessage('Timeout waiting for response');
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
     }
 
     public function testNotifyDoesNotWaitForResponse(): void
@@ -1180,7 +1277,7 @@ final class ClientTest extends TestCase
         $transport = new FakeTransport();
         $client = new Client($transport, 1.0, false);
 
-        $client->notify('agent/cancel', ['taskId' => 'abc']);
+        $client->rpc()->notify('agent/cancel', ['taskId' => 'abc']);
 
         static::assertCount(1, $transport->sent);
 
@@ -1188,6 +1285,60 @@ final class ClientTest extends TestCase
         static::assertArrayNotHasKey('id', $sent);
         static::assertSame('agent/cancel', $sent['method']);
         static::assertSame(['taskId' => 'abc'], $sent['params']);
+    }
+
+    public function testExtensionCallRequiresUnderscoreMethod(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0, false);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid extension method: method must start with "_"');
+
+        $client->rpc()->callExtension('zed.dev/workspace/buffers');
+    }
+
+    public function testExtensionCallSendsCustomRequest(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['buffers' => []],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+
+        static::assertSame(
+            ['buffers' => []],
+            $client->rpc()->callExtension('_zed.dev/workspace/buffers', ['language' => 'rust']),
+        );
+
+        $sent = $this->sentMessage($transport);
+        static::assertSame('_zed.dev/workspace/buffers', $sent['method']);
+        static::assertSame(['language' => 'rust'], $sent['params']);
+    }
+
+    public function testExtensionNotifyRequiresUnderscoreMethod(): void
+    {
+        $client = new Client(new FakeTransport(), 1.0, false);
+
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid extension method: method must start with "_"');
+
+        $client->rpc()->notifyExtension('zed.dev/file_opened');
+    }
+
+    public function testExtensionNotifySendsCustomNotification(): void
+    {
+        $transport = new FakeTransport();
+        $client = new Client($transport, 1.0, false);
+
+        $client->rpc()->notifyExtension('_zed.dev/file_opened', ['path' => '/repo/src/main.rs']);
+
+        $sent = $this->sentMessage($transport);
+        static::assertArrayNotHasKey('id', $sent);
+        static::assertSame('_zed.dev/file_opened', $sent['method']);
+        static::assertSame(['path' => '/repo/src/main.rs'], $sent['params']);
     }
 
     public function testStdioTransportTalksToProcess(): void
@@ -1202,8 +1353,29 @@ final class ClientTest extends TestCase
         try {
             static::assertSame(
                 ['method' => 'agent/run', 'params' => ['task' => 'test']],
-                $client->call('agent/run', ['task' => 'test']),
+                $client->rpc()->call('agent/run', ['task' => 'test']),
             );
+        } finally {
+            $transport->close();
+        }
+    }
+
+    public function testStdioTransportRejectsEmbeddedNewlines(): void
+    {
+        $transport = new StdioTransport([
+            'command' => PHP_BINARY,
+            'args' => [__DIR__ . '/Fixtures/stdio-agent.php'],
+        ]);
+
+        try {
+            $transport->open();
+
+            $this->expectException(TransportException::class);
+            $this->expectExceptionMessage(
+                'Invalid stdio message: JSON-RPC messages must not contain embedded newlines',
+            );
+
+            $transport->send("{\"jsonrpc\":\"2.0\"}\n{\"jsonrpc\":\"2.0\"}");
         } finally {
             $transport->close();
         }
@@ -1219,7 +1391,7 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         try {
-            static::assertSame(['ok' => true], $client->call('initialize'));
+            static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
         } finally {
             $transport->close();
         }
@@ -1238,7 +1410,7 @@ final class ClientTest extends TestCase
             $this->expectException(TransportException::class);
             $this->expectExceptionMessage('agent failed before responding');
 
-            $client->call('initialize');
+            $client->rpc()->call('initialize');
         } finally {
             $transport->close();
         }
@@ -1261,14 +1433,16 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $received = [];
-        $client->onNotification(static function (Notification $notification) use (&$received): void {
-            $received[] = [
-                'method' => $notification->getMethod(),
-                'params' => $notification->getParams(),
-            ];
-        });
+        $client
+            ->notifications()
+            ->onNotification(static function (Notification $notification) use (&$received): void {
+                $received[] = [
+                    'method' => $notification->getMethod(),
+                    'params' => $notification->getParams(),
+                ];
+            });
 
-        $result = $client->call('initialize');
+        $result = $client->rpc()->call('initialize');
 
         static::assertSame(['ok' => true], $result);
         static::assertSame(
@@ -1304,11 +1478,13 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $received = [];
-        $client->on('session/update', static function (Notification $notification) use (&$received): void {
+        $client->notifications()->on('session/update', static function (Notification $notification) use (
+            &$received,
+        ): void {
             $received[] = $notification->getMethod();
         });
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         static::assertSame(['session/update'], $received);
     }
@@ -1331,14 +1507,18 @@ final class ClientTest extends TestCase
 
         $first = [];
         $second = [];
-        $client->onNotification(static function (Notification $notification) use (&$first): void {
-            $first[] = $notification->getMethod();
-        });
-        $client->onNotification(static function (Notification $notification) use (&$second): void {
-            $second[] = $notification->getParams()['status'] ?? null;
-        });
+        $client
+            ->notifications()
+            ->onNotification(static function (Notification $notification) use (&$first): void {
+                $first[] = $notification->getMethod();
+            });
+        $client
+            ->notifications()
+            ->onNotification(static function (Notification $notification) use (&$second): void {
+                $second[] = $notification->getParams()['status'] ?? null;
+            });
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         static::assertSame(['session/update'], $first);
         static::assertSame(['running'], $second);
@@ -1365,8 +1545,8 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        static::assertSame(['first' => true], $client->call('first'));
-        static::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->rpc()->call('first'));
+        static::assertSame(['second' => true], $client->rpc()->call('second'));
     }
 
     public function testListenerCanBeRemoved(): void
@@ -1390,10 +1570,10 @@ final class ClientTest extends TestCase
             $received[] = $notification->getMethod();
         };
 
-        $client->onNotification($listener);
-        $client->offNotification($listener);
+        $client->notifications()->onNotification($listener);
+        $client->notifications()->offNotification($listener);
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         static::assertSame([], $received);
     }
@@ -1414,14 +1594,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequest('fs/read_text_file', static function (array $params): string {
+        $client->requests()->onRequest('fs/read_text_file', static function (array $params): string {
             $path = $params['path'] ?? '';
             self::assertIsString($path);
 
             return 'contents of ' . $path;
         });
 
-        $result = $client->call('initialize');
+        $result = $client->rpc()->call('initialize');
 
         static::assertSame(['ok' => true], $result);
         static::assertCount(2, $transport->sent);
@@ -1449,7 +1629,7 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $result = $client->call('initialize');
+        $result = $client->rpc()->call('initialize');
 
         static::assertSame(['ok' => true], $result);
 
@@ -1475,12 +1655,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onAnyRequest(static fn(string $method, array $params): array => [
-            'method' => $method,
-            'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
-        ]);
+        $client
+            ->requests()
+            ->onAnyRequest(static fn(string $method, array $params): array => [
+                'method' => $method,
+                'answer' => ($params['question'] ?? null) === 'Allow edit?' ? 'approved' : 'denied',
+            ]);
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('req-1', $response['id']);
@@ -1504,10 +1686,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onAnyRequest(static fn(string $method, array $params): array => ['answer' => 'fallback']);
-        $client->onRequest('permission/request', static fn(array $params): array => ['answer' => 'specific']);
+        $client
+            ->requests()
+            ->onAnyRequest(static fn(string $_method, array $_params): array => ['answer' => 'fallback']);
+        $client->requests()->onRequest('permission/request', static fn(array $_params): array => [
+            'answer' => 'specific',
+        ]);
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(['answer' => 'specific'], $response['result']);
@@ -1530,11 +1716,11 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
 
-        $handler = static fn(string $method, array $params): array => ['answer' => 'fallback'];
-        $client->onAnyRequest($handler);
-        $client->offAnyRequest($handler);
+        $handler = static fn(string $_method, array $_params): array => ['answer' => 'fallback'];
+        $client->requests()->onAnyRequest($handler);
+        $client->requests()->offAnyRequest($handler);
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
@@ -1556,11 +1742,11 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequest('fs/read_text_file', static function (): string {
+        $client->requests()->onRequest('fs/read_text_file', static function (): string {
             throw new RuntimeException('disk failure');
         });
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('req-1', $response['id']);
@@ -1591,10 +1777,10 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequest('fs/read_text_file', static fn(): string => 'file contents');
+        $client->requests()->onRequest('fs/read_text_file', static fn(): string => 'file contents');
 
-        static::assertSame(['first' => true], $client->call('first'));
-        static::assertSame(['second' => true], $client->call('second'));
+        static::assertSame(['first' => true], $client->rpc()->call('first'));
+        static::assertSame(['second' => true], $client->rpc()->call('second'));
     }
 
     public function testRequestHandlerCanBeRemoved(): void
@@ -1615,10 +1801,10 @@ final class ClientTest extends TestCase
         $client = new Client($transport, 1.0, false);
 
         $handler = static fn(): string => 'file contents';
-        $client->onRequest('fs/read_text_file', $handler);
-        $client->offRequest('fs/read_text_file', $handler);
+        $client->requests()->onRequest('fs/read_text_file', $handler);
+        $client->requests()->offRequest('fs/read_text_file', $handler);
 
-        $client->call('initialize');
+        $client->rpc()->call('initialize');
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
@@ -1652,15 +1838,17 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequestPermission(static function (RequestPermission $request): RequestPermissionOutcome {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('call_1', $request->getToolCallId());
-            self::assertSame('allow-once', $request->getOptions()[0]->getOptionId());
+        $client
+            ->requests()
+            ->onRequestPermission(static function (RequestPermission $request): RequestPermissionOutcome {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('call_1', $request->getToolCallId());
+                self::assertSame('allow-once', $request->getOptions()[0]->getOptionId());
 
-            return RequestPermissionOutcome::selected('allow-once');
-        });
+                return RequestPermissionOutcome::selected('allow-once');
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('perm-1', $response['id']);
@@ -1703,16 +1891,16 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequestPermission(static function (RequestPermission $request) use (
-            $client,
-        ): RequestPermissionOutcome {
-            self::assertSame('sess_1', $request->getSessionId());
-            $client->sessionCancel('sess_1');
+        $client
+            ->requests()
+            ->onRequestPermission(static function (RequestPermission $request) use ($client): RequestPermissionOutcome {
+                self::assertSame('sess_1', $request->getSessionId());
+                $client->acp()->sessionCancel('sess_1');
 
-            return RequestPermissionOutcome::selected('allow-once');
-        });
+                return RequestPermissionOutcome::selected('allow-once');
+            });
 
-        static::assertTrue($client->sessionPrompt('sess_1', 'Cancel this')->isCancelled());
+        static::assertTrue($client->acp()->sessionPrompt('sess_1', 'Cancel this')->isCancelled());
 
         static::assertCount(3, $transport->sent);
 
@@ -1755,9 +1943,9 @@ final class ClientTest extends TestCase
         $handler =
             static fn(RequestPermission $_request): RequestPermissionOutcome => RequestPermissionOutcome::cancelled();
 
-        $client->onRequestPermission($handler);
-        $client->offRequestPermission($handler);
-        $client->call('initialize');
+        $client->requests()->onRequestPermission($handler);
+        $client->requests()->offRequestPermission($handler);
+        $client->rpc()->call('initialize');
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
@@ -1784,16 +1972,18 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onReadTextFile(static function (ReadTextFileRequest $request): ReadTextFileResult {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('/repo/a.php', $request->getPath());
-            self::assertSame(10, $request->getLine());
-            self::assertSame(50, $request->getLimit());
+        $client
+            ->requests()
+            ->onReadTextFile(static function (ReadTextFileRequest $request): ReadTextFileResult {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('/repo/a.php', $request->getPath());
+                self::assertSame(10, $request->getLine());
+                self::assertSame(50, $request->getLimit());
 
-            return new ReadTextFileResult('contents');
-        });
+                return new ReadTextFileResult('contents');
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('fs-1', $response['id']);
@@ -1820,9 +2010,9 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onReadTextFile(static fn(): string => 'plain contents');
+        $client->requests()->onReadTextFile(static fn(): string => 'plain contents');
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(['content' => 'plain contents'], $response['result']);
@@ -1844,9 +2034,9 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onReadTextFile(static fn(): string => 'ignored');
+        $client->requests()->onReadTextFile(static fn(): string => 'ignored');
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_602, self::errorOf($response)['code']);
@@ -1872,13 +2062,15 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onWriteTextFile(static function (WriteTextFileRequest $request): void {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('/repo/a.php', $request->getPath());
-            self::assertSame('hello', $request->getContent());
-        });
+        $client
+            ->requests()
+            ->onWriteTextFile(static function (WriteTextFileRequest $request): void {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('/repo/a.php', $request->getPath());
+                self::assertSame('hello', $request->getContent());
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('fs-1', $response['id']);
@@ -1907,9 +2099,9 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onWriteTextFile(static fn(): WriteTextFileResult => new WriteTextFileResult());
+        $client->requests()->onWriteTextFile(static fn(): WriteTextFileResult => new WriteTextFileResult());
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertArrayHasKey('result', $response);
@@ -1935,10 +2127,10 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onRequest('fs/read_text_file', static fn(): string => 'generic');
-        $client->onReadTextFile(static fn(): ReadTextFileResult => new ReadTextFileResult('typed'));
+        $client->requests()->onRequest('fs/read_text_file', static fn(): string => 'generic');
+        $client->requests()->onReadTextFile(static fn(): ReadTextFileResult => new ReadTextFileResult('typed'));
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(['content' => 'typed'], $response['result']);
@@ -1964,10 +2156,10 @@ final class ClientTest extends TestCase
 
         $client = new Client($transport, 1.0, false);
         $handler = static fn(): ReadTextFileResult => new ReadTextFileResult('contents');
-        $client->onReadTextFile($handler);
-        $client->offReadTextFile($handler);
+        $client->requests()->onReadTextFile($handler);
+        $client->requests()->offReadTextFile($handler);
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
@@ -1996,18 +2188,20 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalCreate(static function (TerminalCreateRequest $request): TerminalCreateResult {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('npm', $request->getCommand());
-            self::assertSame(['test'], $request->getArgs());
-            self::assertSame([['name' => 'NODE_ENV', 'value' => 'test']], $request->getEnv());
-            self::assertSame('/home/user/project', $request->getCwd());
-            self::assertSame(1_048_576, $request->getOutputByteLimit());
+        $client
+            ->requests()
+            ->onTerminalCreate(static function (TerminalCreateRequest $request): TerminalCreateResult {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('npm', $request->getCommand());
+                self::assertSame(['test'], $request->getArgs());
+                self::assertSame([['name' => 'NODE_ENV', 'value' => 'test']], $request->getEnv());
+                self::assertSame('/home/user/project', $request->getCwd());
+                self::assertSame(1_048_576, $request->getOutputByteLimit());
 
-            return TerminalCreateResult::fromTerminalId('term_xyz789');
-        });
+                return TerminalCreateResult::fromTerminalId('term_xyz789');
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('term-1', $response['id']);
@@ -2034,14 +2228,16 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalOutput(static function (TerminalOutputRequest $request): TerminalOutputResult {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('term_xyz789', $request->getTerminalId());
+        $client
+            ->requests()
+            ->onTerminalOutput(static function (TerminalOutputRequest $request): TerminalOutputResult {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('term_xyz789', $request->getTerminalId());
 
-            return new TerminalOutputResult('done', false);
-        });
+                return new TerminalOutputResult('done', false);
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('term-1', $response['id']);
@@ -2068,12 +2264,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalWaitForExit(static fn(TerminalWaitForExitRequest $_request): TerminalWaitForExitResult => new TerminalWaitForExitResult(
-            0,
-            null,
-        ));
+        $client
+            ->requests()
+            ->onTerminalWaitForExit(static fn(TerminalWaitForExitRequest $_request): TerminalWaitForExitResult => new TerminalWaitForExitResult(
+                0,
+                null,
+            ));
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('term-1', $response['id']);
@@ -2100,12 +2298,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalKill(static function (TerminalKillRequest $request): void {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('term_xyz789', $request->getTerminalId());
-        });
+        $client
+            ->requests()
+            ->onTerminalKill(static function (TerminalKillRequest $request): void {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('term_xyz789', $request->getTerminalId());
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('term-1', $response['id']);
@@ -2133,12 +2333,14 @@ final class ClientTest extends TestCase
         ]);
 
         $client = new Client($transport, 1.0, false);
-        $client->onTerminalRelease(static function (TerminalReleaseRequest $request): void {
-            self::assertSame('sess_1', $request->getSessionId());
-            self::assertSame('term_xyz789', $request->getTerminalId());
-        });
+        $client
+            ->requests()
+            ->onTerminalRelease(static function (TerminalReleaseRequest $request): void {
+                self::assertSame('sess_1', $request->getSessionId());
+                self::assertSame('term_xyz789', $request->getTerminalId());
+            });
 
-        static::assertSame(['ok' => true], $client->call('initialize'));
+        static::assertSame(['ok' => true], $client->rpc()->call('initialize'));
 
         $response = self::decode($transport->sent[1]);
         static::assertSame('term-1', $response['id']);
@@ -2194,11 +2396,6 @@ final class ClientTest extends TestCase
      */
     private static function errorOf(array $response): array
     {
-        self::assertIsArray($response['error']);
-
-        /** @var array<string, mixed> $error */
-        $error = $response['error'];
-
-        return $error;
+        return self::objectArray($response['error']);
     }
 }

@@ -23,8 +23,9 @@ final class ToolCallContentFactoryTest extends TestCase
 
         static::assertInstanceOf(ContentToolCallContent::class, $item);
         static::assertSame('content', $item->getType());
-        static::assertInstanceOf(TextContentBlock::class, $item->getContentBlock());
-        static::assertSame('Hello', $item->getContentBlock()->getText());
+        $contentBlock = $item->getContentBlock();
+        static::assertInstanceOf(TextContentBlock::class, $contentBlock);
+        static::assertSame('Hello', $contentBlock->getText());
     }
 
     public function testCreatesDiffToolCallContent(): void

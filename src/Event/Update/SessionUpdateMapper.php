@@ -46,6 +46,8 @@ final class SessionUpdateMapper
             'tool_call_update' => ToolCallStatusUpdate::fromUpdate($sessionId, $update),
             'usage_update' => UsageUpdate::fromUpdate($sessionId, $update),
             'plan' => PlanUpdate::fromUpdate($sessionId, $update),
+            'config_option_update' => ConfigOptionUpdate::fromUpdate($sessionId, $update),
+            'available_commands_update' => AvailableCommandsUpdate::fromUpdate($sessionId, $update),
             default => null,
         };
     }

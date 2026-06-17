@@ -89,6 +89,10 @@ final class StdioTransport implements TransportInterface
         $this->ensureOpen();
         $this->collectStderr();
 
+        if (str_contains($message, "\n") || str_contains($message, "\r")) {
+            throw new TransportException('Invalid stdio message: JSON-RPC messages must not contain embedded newlines');
+        }
+
         $stdin = $this->getStdin();
         $payload = $message . "\n";
         $written = fwrite($stdin, $payload);

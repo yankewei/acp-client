@@ -25,9 +25,11 @@ final class PlanUpdateTest extends TestCase
                 [
                     'content' => 'Second step',
                     'priority' => 'low',
+                    'status' => 'pending',
                 ],
                 [
                     'content' => 'Third step',
+                    'priority' => 'medium',
                     'status' => 'completed',
                 ],
             ],
@@ -48,11 +50,11 @@ final class PlanUpdateTest extends TestCase
         static::assertInstanceOf(PlanEntry::class, $entries[1]);
         static::assertSame('Second step', $entries[1]->getContent());
         static::assertSame('low', $entries[1]->getPriority());
-        static::assertNull($entries[1]->getStatus());
+        static::assertSame('pending', $entries[1]->getStatus());
 
         static::assertInstanceOf(PlanEntry::class, $entries[2]);
         static::assertSame('Third step', $entries[2]->getContent());
-        static::assertNull($entries[2]->getPriority());
+        static::assertSame('medium', $entries[2]->getPriority());
         static::assertSame('completed', $entries[2]->getStatus());
     }
 
@@ -111,10 +113,42 @@ final class PlanUpdateTest extends TestCase
         ]);
     }
 
+    public function testRejectsEntryMissingPriority(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid plan entry: priority must be one of high, medium, low');
+
+        PlanUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'plan',
+            'entries' => [
+                [
+                    'content' => 'First step',
+                    'status' => 'pending',
+                ],
+            ],
+        ]);
+    }
+
+    public function testRejectsEntryMissingStatus(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid plan entry: status must be one of pending, in_progress, completed');
+
+        PlanUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'plan',
+            'entries' => [
+                [
+                    'content' => 'First step',
+                    'priority' => 'high',
+                ],
+            ],
+        ]);
+    }
+
     public function testRejectsInvalidPriorityType(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid plan entry: priority must be a string or null');
+        $this->expectExceptionMessage('Invalid plan entry: priority must be one of high, medium, low');
 
         PlanUpdate::fromUpdate('sess_1', [
             'sessionUpdate' => 'plan',
@@ -122,6 +156,24 @@ final class PlanUpdateTest extends TestCase
                 [
                     'content' => 'First step',
                     'priority' => 123,
+                    'status' => 'pending',
+                ],
+            ],
+        ]);
+    }
+
+    public function testRejectsInvalidPriorityValue(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid plan entry: priority must be one of high, medium, low');
+
+        PlanUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'plan',
+            'entries' => [
+                [
+                    'content' => 'First step',
+                    'priority' => 'urgent',
+                    'status' => 'pending',
                 ],
             ],
         ]);
@@ -130,14 +182,32 @@ final class PlanUpdateTest extends TestCase
     public function testRejectsInvalidStatusType(): void
     {
         $this->expectException(AcpException::class);
-        $this->expectExceptionMessage('Invalid plan entry: status must be a string or null');
+        $this->expectExceptionMessage('Invalid plan entry: status must be one of pending, in_progress, completed');
 
         PlanUpdate::fromUpdate('sess_1', [
             'sessionUpdate' => 'plan',
             'entries' => [
                 [
                     'content' => 'First step',
+                    'priority' => 'high',
                     'status' => true,
+                ],
+            ],
+        ]);
+    }
+
+    public function testRejectsInvalidStatusValue(): void
+    {
+        $this->expectException(AcpException::class);
+        $this->expectExceptionMessage('Invalid plan entry: status must be one of pending, in_progress, completed');
+
+        PlanUpdate::fromUpdate('sess_1', [
+            'sessionUpdate' => 'plan',
+            'entries' => [
+                [
+                    'content' => 'First step',
+                    'priority' => 'high',
+                    'status' => 'blocked',
                 ],
             ],
         ]);
