@@ -16,6 +16,14 @@ use Yankewei\AcpClient\Dto\RequestPermission;
 use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
 use Yankewei\AcpClient\Dto\Session;
 use Yankewei\AcpClient\Dto\SessionListResult;
+use Yankewei\AcpClient\Dto\Terminal\TerminalCreateRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalCreateResult;
+use Yankewei\AcpClient\Dto\Terminal\TerminalKillRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalOutputRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalOutputResult;
+use Yankewei\AcpClient\Dto\Terminal\TerminalReleaseRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalWaitForExitRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalWaitForExitResult;
 use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Exception\JsonRpcException;
@@ -50,6 +58,21 @@ final class Client
 
     /** @var (callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null))|null */
     private $writeTextFileHandler = null;
+
+    /** @var (callable(TerminalCreateRequest): (TerminalCreateResult|array<string, mixed>))|null */
+    private $terminalCreateHandler = null;
+
+    /** @var (callable(TerminalOutputRequest): (TerminalOutputResult|array<string, mixed>))|null */
+    private $terminalOutputHandler = null;
+
+    /** @var (callable(TerminalWaitForExitRequest): (TerminalWaitForExitResult|array<string, mixed>))|null */
+    private $terminalWaitForExitHandler = null;
+
+    /** @var (callable(TerminalKillRequest): (array<string, mixed>|null))|null */
+    private $terminalKillHandler = null;
+
+    /** @var (callable(TerminalReleaseRequest): (array<string, mixed>|null))|null */
+    private $terminalReleaseHandler = null;
 
     /** @var array<string, array{id: int|string, sessionId: string}> */
     private array $pendingPermissionRequests = [];
@@ -98,7 +121,12 @@ final class Client
                     'readTextFile' => $this->readTextFileHandler !== null,
                     'writeTextFile' => $this->writeTextFileHandler !== null,
                 ],
-                'terminal' => false,
+                'terminal' =>
+                    $this->terminalCreateHandler !== null
+                        || $this->terminalOutputHandler !== null
+                        || $this->terminalWaitForExitHandler !== null
+                        || $this->terminalKillHandler !== null
+                        || $this->terminalReleaseHandler !== null,
             ],
             'clientInfo' => [
                 'name' => 'yankewei/acp-client',
@@ -613,6 +641,142 @@ final class Client
     {
         if ($this->writeTextFileHandler === $handler) {
             $this->writeTextFileHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP terminal/create requests.
+     *
+     * The handler may return TerminalCreateResult or a raw result array for
+     * agent-specific extensions. The Client is responsible for starting the
+     * command and returning a unique terminalId.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(TerminalCreateRequest): (TerminalCreateResult|array<string, mixed>) $handler
+     */
+    public function onTerminalCreate(callable $handler): void
+    {
+        $this->terminalCreateHandler = $handler;
+    }
+
+    /**
+     * Remove the typed terminal/create handler only if it is currently registered.
+     *
+     * @param callable(TerminalCreateRequest): (TerminalCreateResult|array<string, mixed>) $handler
+     */
+    public function offTerminalCreate(callable $handler): void
+    {
+        if ($this->terminalCreateHandler === $handler) {
+            $this->terminalCreateHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP terminal/output requests.
+     *
+     * The handler may return TerminalOutputResult or a raw result array for
+     * agent-specific extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(TerminalOutputRequest): (TerminalOutputResult|array<string, mixed>) $handler
+     */
+    public function onTerminalOutput(callable $handler): void
+    {
+        $this->terminalOutputHandler = $handler;
+    }
+
+    /**
+     * Remove the typed terminal/output handler only if it is currently registered.
+     *
+     * @param callable(TerminalOutputRequest): (TerminalOutputResult|array<string, mixed>) $handler
+     */
+    public function offTerminalOutput(callable $handler): void
+    {
+        if ($this->terminalOutputHandler === $handler) {
+            $this->terminalOutputHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP terminal/wait_for_exit requests.
+     *
+     * The handler may return TerminalWaitForExitResult or a raw result array for
+     * agent-specific extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(TerminalWaitForExitRequest): (TerminalWaitForExitResult|array<string, mixed>) $handler
+     */
+    public function onTerminalWaitForExit(callable $handler): void
+    {
+        $this->terminalWaitForExitHandler = $handler;
+    }
+
+    /**
+     * Remove the typed terminal/wait_for_exit handler only if it is currently registered.
+     *
+     * @param callable(TerminalWaitForExitRequest): (TerminalWaitForExitResult|array<string, mixed>) $handler
+     */
+    public function offTerminalWaitForExit(callable $handler): void
+    {
+        if ($this->terminalWaitForExitHandler === $handler) {
+            $this->terminalWaitForExitHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP terminal/kill requests.
+     *
+     * The handler may return a raw result array or null for agent-specific
+     * extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(TerminalKillRequest): (array<string, mixed>|null) $handler
+     */
+    public function onTerminalKill(callable $handler): void
+    {
+        $this->terminalKillHandler = $handler;
+    }
+
+    /**
+     * Remove the typed terminal/kill handler only if it is currently registered.
+     *
+     * @param callable(TerminalKillRequest): (array<string, mixed>|null) $handler
+     */
+    public function offTerminalKill(callable $handler): void
+    {
+        if ($this->terminalKillHandler === $handler) {
+            $this->terminalKillHandler = null;
+        }
+    }
+
+    /**
+     * Register a typed handler for ACP terminal/release requests.
+     *
+     * The handler may return a raw result array or null for agent-specific
+     * extensions.
+     *
+     * Setting a new handler replaces any previously registered handler.
+     *
+     * @param callable(TerminalReleaseRequest): (array<string, mixed>|null) $handler
+     */
+    public function onTerminalRelease(callable $handler): void
+    {
+        $this->terminalReleaseHandler = $handler;
+    }
+
+    /**
+     * Remove the typed terminal/release handler only if it is currently registered.
+     *
+     * @param callable(TerminalReleaseRequest): (array<string, mixed>|null) $handler
+     */
+    public function offTerminalRelease(callable $handler): void
+    {
+        if ($this->terminalReleaseHandler === $handler) {
+            $this->terminalReleaseHandler = null;
         }
     }
 
@@ -1251,6 +1415,31 @@ final class Client
             return;
         }
 
+        if ($method === 'terminal/create' && $this->terminalCreateHandler !== null) {
+            $this->handleTerminalCreate($id, $data);
+            return;
+        }
+
+        if ($method === 'terminal/output' && $this->terminalOutputHandler !== null) {
+            $this->handleTerminalOutput($id, $data);
+            return;
+        }
+
+        if ($method === 'terminal/wait_for_exit' && $this->terminalWaitForExitHandler !== null) {
+            $this->handleTerminalWaitForExit($id, $data);
+            return;
+        }
+
+        if ($method === 'terminal/kill' && $this->terminalKillHandler !== null) {
+            $this->handleTerminalKill($id, $data);
+            return;
+        }
+
+        if ($method === 'terminal/release' && $this->terminalReleaseHandler !== null) {
+            $this->handleTerminalRelease($id, $data);
+            return;
+        }
+
         $methodHandler = $this->requestHandlers[$method][0] ?? null;
         $anyHandler = $this->anyRequestHandler;
 
@@ -1426,6 +1615,214 @@ final class Client
             return $result->toResultArray();
         }
 
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleTerminalCreate(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = TerminalCreateRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->terminalCreateHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: terminal/create');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeTerminalCreateResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param TerminalCreateResult|array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function normalizeTerminalCreateResult(TerminalCreateResult|array $result): array
+    {
+        if ($result instanceof TerminalCreateResult) {
+            return $result->toResultArray();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleTerminalOutput(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = TerminalOutputRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->terminalOutputHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: terminal/output');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeTerminalOutputResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param TerminalOutputResult|array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function normalizeTerminalOutputResult(TerminalOutputResult|array $result): array
+    {
+        if ($result instanceof TerminalOutputResult) {
+            return $result->toResultArray();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleTerminalWaitForExit(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = TerminalWaitForExitRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->terminalWaitForExitHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: terminal/wait_for_exit');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeTerminalWaitForExitResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param TerminalWaitForExitResult|array<string, mixed> $result
+     * @return array<string, mixed>
+     */
+    private function normalizeTerminalWaitForExitResult(TerminalWaitForExitResult|array $result): array
+    {
+        if ($result instanceof TerminalWaitForExitResult) {
+            return $result->toResultArray();
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleTerminalKill(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = TerminalKillRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->terminalKillHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: terminal/kill');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeTerminalVoidResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function handleTerminalRelease(int|string $id, array $data): void
+    {
+        $params = $data['params'] ?? [];
+        if (!is_array($params) || array_is_list($params)) {
+            $params = [];
+        }
+
+        try {
+            /** @var array<string, mixed> $params */
+            $request = TerminalReleaseRequest::fromArray($params);
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            $handler = $this->terminalReleaseHandler;
+            if ($handler === null) {
+                $this->sendError($id, -32_601, 'Method not found: terminal/release');
+                return;
+            }
+
+            $result = $handler($request);
+            $this->sendResponse($id, $this->normalizeTerminalVoidResult($result));
+        } catch (Throwable $e) {
+            $this->sendError($id, -32_603, $e->getMessage());
+        }
+    }
+
+    /**
+     * @param array<string, mixed>|null $result
+     * @return array<string, mixed>|null
+     */
+    private function normalizeTerminalVoidResult(?array $result): ?array
+    {
         return $result;
     }
 

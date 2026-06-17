@@ -14,6 +14,14 @@ use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileRequest;
 use Yankewei\AcpClient\Dto\FileSystem\WriteTextFileResult;
 use Yankewei\AcpClient\Dto\RequestPermission;
 use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
+use Yankewei\AcpClient\Dto\Terminal\TerminalCreateRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalCreateResult;
+use Yankewei\AcpClient\Dto\Terminal\TerminalKillRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalOutputRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalOutputResult;
+use Yankewei\AcpClient\Dto\Terminal\TerminalReleaseRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalWaitForExitRequest;
+use Yankewei\AcpClient\Dto\Terminal\TerminalWaitForExitResult;
 use Yankewei\AcpClient\Event\Notification;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Exception\JsonRpcException;
@@ -245,6 +253,59 @@ final class ClientTest extends TestCase
 
         static::assertFalse($fs['readTextFile']);
         static::assertFalse($fs['writeTextFile']);
+    }
+
+    public function testInitializeAdvertisesTerminalCapabilityWhenHandlerRegistered(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalCreate(
+            static fn(TerminalCreateRequest $_request): TerminalCreateResult => TerminalCreateResult::fromTerminalId(
+                'term_1',
+            ),
+        );
+        $client->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+
+        static::assertTrue($clientCapabilities['terminal']);
+    }
+
+    public function testInitializeDoesNotAdvertiseTerminalCapabilityAfterHandlerRemoved(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $handler =
+            static fn(TerminalCreateRequest $_request): TerminalCreateResult => TerminalCreateResult::fromTerminalId(
+                'term_1',
+            );
+        $client->onTerminalCreate($handler);
+        $client->offTerminalCreate($handler);
+        $client->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+
+        static::assertFalse($clientCapabilities['terminal']);
     }
 
     public function testAuthenticateCallsAcpMethod(): void
@@ -1910,6 +1971,180 @@ final class ClientTest extends TestCase
 
         $response = self::decode($transport->sent[1]);
         static::assertSame(-32_601, self::errorOf($response)['code']);
+    }
+
+    public function testOnTerminalCreateRespondsWithResultDto(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'term-1',
+            'method' => 'terminal/create',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'command' => 'npm',
+                'args' => ['test'],
+                'env' => [['name' => 'NODE_ENV', 'value' => 'test']],
+                'cwd' => '/home/user/project',
+                'outputByteLimit' => 1_048_576,
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalCreate(static function (TerminalCreateRequest $request): TerminalCreateResult {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('npm', $request->getCommand());
+            self::assertSame(['test'], $request->getArgs());
+            self::assertSame([['name' => 'NODE_ENV', 'value' => 'test']], $request->getEnv());
+            self::assertSame('/home/user/project', $request->getCwd());
+            self::assertSame(1_048_576, $request->getOutputByteLimit());
+
+            return TerminalCreateResult::fromTerminalId('term_xyz789');
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('term-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame(['terminalId' => 'term_xyz789'], $response['result']);
+    }
+
+    public function testOnTerminalOutputRespondsWithResultDto(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'term-1',
+            'method' => 'terminal/output',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'terminalId' => 'term_xyz789',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalOutput(static function (TerminalOutputRequest $request): TerminalOutputResult {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('term_xyz789', $request->getTerminalId());
+
+            return new TerminalOutputResult('done', false);
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('term-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame(['output' => 'done', 'truncated' => false], $response['result']);
+    }
+
+    public function testOnTerminalWaitForExitRespondsWithResultDto(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'term-1',
+            'method' => 'terminal/wait_for_exit',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'terminalId' => 'term_xyz789',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalWaitForExit(static fn(TerminalWaitForExitRequest $_request): TerminalWaitForExitResult => new TerminalWaitForExitResult(
+            0,
+            null,
+        ));
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('term-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertSame(['exitCode' => 0, 'signal' => null], $response['result']);
+    }
+
+    public function testOnTerminalKillRespondsWithEmptyResult(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'term-1',
+            'method' => 'terminal/kill',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'terminalId' => 'term_xyz789',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalKill(static function (TerminalKillRequest $request): void {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('term_xyz789', $request->getTerminalId());
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('term-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertArrayHasKey('result', $response);
+        static::assertNull($response['result']);
+    }
+
+    public function testOnTerminalReleaseRespondsWithEmptyResult(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'term-1',
+            'method' => 'terminal/release',
+            'params' => [
+                'sessionId' => 'sess_1',
+                'terminalId' => 'term_xyz789',
+            ],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->onTerminalRelease(static function (TerminalReleaseRequest $request): void {
+            self::assertSame('sess_1', $request->getSessionId());
+            self::assertSame('term_xyz789', $request->getTerminalId());
+        });
+
+        static::assertSame(['ok' => true], $client->call('initialize'));
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame('term-1', $response['id']);
+        static::assertArrayNotHasKey('error', $response);
+        static::assertArrayHasKey('result', $response);
+        static::assertNull($response['result']);
     }
 
     /**

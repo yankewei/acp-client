@@ -26,15 +26,81 @@ count = 1
 
 [[issues]]
 file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalCreateHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalOutputHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalWaitForExitHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalKillHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalReleaseHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
 code = "mixed-assignment"
 message = "Assigning `mixed` type to a variable may lead to unexpected behavior."
 count = 14
 
 [[issues]]
 file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalCreateHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalOutputHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalWaitForExitHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalKillHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
+code = "missing-property-type"
+message = "Property `$terminalReleaseHandler` is missing a type hint."
+count = 1
+
+[[issues]]
+file = "src/Client.php"
 code = "mixed-assignment"
 message = "Assigning `nonnull` type to a variable may lead to unexpected behavior."
-count = 6
+count = 11
+
+[[issues]]
+file = "src/Dto/Terminal/TerminalCreateRequest.php"
+code = "mixed-assignment"
+message = "Assigning `mixed` type to a variable may lead to unexpected behavior."
+count = 4
 
 [[issues]]
 file = "src/Dto/ContentBlock/Annotations.php"
