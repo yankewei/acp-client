@@ -17,6 +17,12 @@
         }
     ],
     "minimum-stability": "stable",
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "analyze": "vendor/bin/mago analyze",
+        "lint": "vendor/bin/mago lint",
+        "format": "vendor/bin/mago format"
+    },
     "autoload": {
         "psr-4": {
             "Yankewei\\AcpClient\\": "src/"

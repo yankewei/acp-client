@@ -321,41 +321,143 @@ final class AgentRequestDispatcher
         }
 
         if ($method === 'fs/read_text_file' && $this->readTextFileHandler !== null) {
-            $this->handleReadTextFile($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'fs/read_text_file',
+                ReadTextFileRequest::fromArray(...),
+                $this->readTextFileHandler,
+                $this->normalizeReadTextFileResult(...),
+            );
             return true;
         }
 
         if ($method === 'fs/write_text_file' && $this->writeTextFileHandler !== null) {
-            $this->handleWriteTextFile($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'fs/write_text_file',
+                WriteTextFileRequest::fromArray(...),
+                $this->writeTextFileHandler,
+                $this->normalizeWriteTextFileResult(...),
+            );
             return true;
         }
 
         if ($method === 'terminal/create' && $this->terminalCreateHandler !== null) {
-            $this->handleTerminalCreate($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'terminal/create',
+                TerminalCreateRequest::fromArray(...),
+                $this->terminalCreateHandler,
+                $this->normalizeTerminalCreateResult(...),
+            );
             return true;
         }
 
         if ($method === 'terminal/output' && $this->terminalOutputHandler !== null) {
-            $this->handleTerminalOutput($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'terminal/output',
+                TerminalOutputRequest::fromArray(...),
+                $this->terminalOutputHandler,
+                $this->normalizeTerminalOutputResult(...),
+            );
             return true;
         }
 
         if ($method === 'terminal/wait_for_exit' && $this->terminalWaitForExitHandler !== null) {
-            $this->handleTerminalWaitForExit($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'terminal/wait_for_exit',
+                TerminalWaitForExitRequest::fromArray(...),
+                $this->terminalWaitForExitHandler,
+                $this->normalizeTerminalWaitForExitResult(...),
+            );
             return true;
         }
 
         if ($method === 'terminal/kill' && $this->terminalKillHandler !== null) {
-            $this->handleTerminalKill($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'terminal/kill',
+                TerminalKillRequest::fromArray(...),
+                $this->terminalKillHandler,
+                $this->normalizeTerminalVoidResult(...),
+            );
             return true;
         }
 
         if ($method === 'terminal/release' && $this->terminalReleaseHandler !== null) {
-            $this->handleTerminalRelease($id, $data, $sendResponse, $sendError);
+            $this->executeTypedRequest(
+                $id,
+                $data,
+                $sendResponse,
+                $sendError,
+                'terminal/release',
+                TerminalReleaseRequest::fromArray(...),
+                $this->terminalReleaseHandler,
+                $this->normalizeTerminalVoidResult(...),
+            );
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * @template TRequest of object
+     * @template TResult
+     * @param array<string, mixed> $data
+     * @param callable(int|string, mixed): void $sendResponse
+     * @param callable(int|string, int, string, mixed=): void $sendError
+     * @param callable(array<string, mixed>): TRequest $parse
+     * @param (callable(TRequest): TResult)|null $handler
+     * @param callable(TResult): mixed $normalize
+     */
+    private function executeTypedRequest(
+        int|string $id,
+        array $data,
+        callable $sendResponse,
+        callable $sendError,
+        string $method,
+        callable $parse,
+        ?callable $handler,
+        callable $normalize,
+    ): void {
+        try {
+            $request = $parse($this->objectParams($data));
+        } catch (Throwable $e) {
+            $sendError($id, -32_602, $e->getMessage());
+            return;
+        }
+
+        try {
+            if ($handler === null) {
+                $sendError($id, -32_601, "Method not found: {$method}");
+                return;
+            }
+
+            $sendResponse($id, $normalize($handler($request)));
+        } catch (Throwable $e) {
+            $sendError($id, -32_603, $e->getMessage());
+        }
     }
 
     /**
@@ -422,34 +524,6 @@ final class AgentRequestDispatcher
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleReadTextFile(int|string $id, array $data, callable $sendResponse, callable $sendError): void
-    {
-        try {
-            $request = ReadTextFileRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->readTextFileHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: fs/read_text_file';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeReadTextFileResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
-    }
-
-    /**
      * @param ReadTextFileResult|string|array<string, mixed> $result
      * @return array<string, mixed>
      */
@@ -467,34 +541,6 @@ final class AgentRequestDispatcher
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleWriteTextFile(int|string $id, array $data, callable $sendResponse, callable $sendError): void
-    {
-        try {
-            $request = WriteTextFileRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->writeTextFileHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: fs/write_text_file';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeWriteTextFileResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
-    }
-
-    /**
      * @param WriteTextFileResult|array<string, mixed>|null $result
      * @return array<string, mixed>|null
      */
@@ -505,38 +551,6 @@ final class AgentRequestDispatcher
         }
 
         return $result;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleTerminalCreate(
-        int|string $id,
-        array $data,
-        callable $sendResponse,
-        callable $sendError,
-    ): void {
-        try {
-            $request = TerminalCreateRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->terminalCreateHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: terminal/create';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeTerminalCreateResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
     }
 
     /**
@@ -553,38 +567,6 @@ final class AgentRequestDispatcher
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleTerminalOutput(
-        int|string $id,
-        array $data,
-        callable $sendResponse,
-        callable $sendError,
-    ): void {
-        try {
-            $request = TerminalOutputRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->terminalOutputHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: terminal/output';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeTerminalOutputResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
-    }
-
-    /**
      * @param TerminalOutputResult|array<string, mixed> $result
      * @return array<string, mixed>
      */
@@ -598,38 +580,6 @@ final class AgentRequestDispatcher
     }
 
     /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleTerminalWaitForExit(
-        int|string $id,
-        array $data,
-        callable $sendResponse,
-        callable $sendError,
-    ): void {
-        try {
-            $request = TerminalWaitForExitRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->terminalWaitForExitHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: terminal/wait_for_exit';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeTerminalWaitForExitResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
-    }
-
-    /**
      * @param TerminalWaitForExitResult|array<string, mixed> $result
      * @return array<string, mixed>
      */
@@ -640,66 +590,6 @@ final class AgentRequestDispatcher
         }
 
         return $result;
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleTerminalKill(int|string $id, array $data, callable $sendResponse, callable $sendError): void
-    {
-        try {
-            $request = TerminalKillRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->terminalKillHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: terminal/kill';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeTerminalVoidResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
-    }
-
-    /**
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     */
-    private function handleTerminalRelease(
-        int|string $id,
-        array $data,
-        callable $sendResponse,
-        callable $sendError,
-    ): void {
-        try {
-            $request = TerminalReleaseRequest::fromArray($this->objectParams($data));
-        } catch (Throwable $e) {
-            $sendError($id, -32_602, $e->getMessage());
-            return;
-        }
-
-        try {
-            $handler = $this->terminalReleaseHandler;
-            if (!is_callable($handler)) {
-                $message = 'Method not found: terminal/release';
-                $sendError($id, -32_601, $message);
-                return;
-            }
-
-            $sendResponse($id, $this->normalizeTerminalVoidResult($handler($request)));
-        } catch (Throwable $e) {
-            $sendError($id, -32_603, $e->getMessage());
-        }
     }
 
     /**

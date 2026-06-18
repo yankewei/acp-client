@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Yankewei\AcpClient;
 
+use Yankewei\AcpClient\Dto\ContentBlock\ContentBlockType;
 use Yankewei\AcpClient\Dto\InitializeResult;
 use Yankewei\AcpClient\Exception\AcpException;
 use Yankewei\AcpClient\Util\Path;
@@ -109,31 +110,32 @@ final class ProtocolValidator
                 throw new AcpException("Invalid {$method} params: prompt[{$index}].type must be a string");
             }
 
+            $contentBlockType = ContentBlockType::tryFrom($type);
+            if ($contentBlockType === null) {
+                throw new AcpException(
+                    "Invalid {$method} params: prompt[{$index}].type is not a supported content block type",
+                );
+            }
+
             $this->validateOptionalObjectField($method, "prompt[{$index}].annotations", $block, 'annotations');
 
-            match ($type) {
-                'text' => $this->validateTextContentBlock($method, $block, $index),
-                'resource_link' => $this->validateResourceLinkContentBlock($method, $block, $index),
-                'image' => $this->validateMediaContentBlock(
+            if (!$contentBlockType->isSupportedBy($initializeResult)) {
+                $capability = $contentBlockType->capability();
+                throw new AcpException(
+                    "Cannot call {$method} with {$contentBlockType->value} content: agent did not advertise {$capability}",
+                );
+            }
+
+            match ($contentBlockType) {
+                ContentBlockType::Text => $this->validateTextContentBlock($method, $block, $index),
+                ContentBlockType::ResourceLink => $this->validateResourceLinkContentBlock($method, $block, $index),
+                ContentBlockType::Image, ContentBlockType::Audio => $this->validateMediaContentBlock(
                     $method,
                     $block,
                     $index,
-                    'image',
-                    $initializeResult->supportsPromptImage(),
-                    'promptCapabilities.image',
+                    $contentBlockType->value,
                 ),
-                'audio' => $this->validateMediaContentBlock(
-                    $method,
-                    $block,
-                    $index,
-                    'audio',
-                    $initializeResult->supportsPromptAudio(),
-                    'promptCapabilities.audio',
-                ),
-                'resource' => $this->validateEmbeddedContextContentBlock($method, $initializeResult, $block, $index),
-                default => throw new AcpException(
-                    "Invalid {$method} params: prompt[{$index}].type is not a supported content block type",
-                ),
+                ContentBlockType::Resource => $this->validateEmbeddedContextContentBlock($method, $initializeResult, $block, $index),
             };
         }
     }
@@ -345,13 +347,7 @@ final class ProtocolValidator
         array $block,
         int $index,
         string $type,
-        bool $supported,
-        string $capability,
     ): void {
-        if (!$supported) {
-            throw new AcpException("Cannot call {$method} with {$type} content: agent did not advertise {$capability}");
-        }
-
         if (!array_key_exists('data', $block) || !is_string($block['data'])) {
             throw new AcpException("Invalid {$method} params: prompt[{$index}].data must be a string");
         }

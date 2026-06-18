@@ -23,18 +23,22 @@ final class ContentBlockFactory
             throw new AcpException('Invalid content block: type must be a string');
         }
 
+        $contentBlockType = ContentBlockType::tryFrom($type);
+        if ($contentBlockType === null) {
+            throw new AcpException('Invalid content block: type is not a supported content block type');
+        }
+
         $annotations = Annotations::fromArray(
             $data['annotations'] ?? null,
             'Invalid content block: annotations must be an object',
         );
 
-        return match ($type) {
-            'text' => self::createText($data, $annotations),
-            'image' => self::createImage($data, $annotations),
-            'audio' => self::createAudio($data, $annotations),
-            'resource' => self::createResource($data, $annotations),
-            'resource_link' => self::createResourceLink($data, $annotations),
-            default => throw new AcpException('Invalid content block: type is not a supported content block type'),
+        return match ($contentBlockType) {
+            ContentBlockType::Text => self::createText($data, $annotations),
+            ContentBlockType::Image => self::createImage($data, $annotations),
+            ContentBlockType::Audio => self::createAudio($data, $annotations),
+            ContentBlockType::Resource => self::createResource($data, $annotations),
+            ContentBlockType::ResourceLink => self::createResourceLink($data, $annotations),
         };
     }
 
