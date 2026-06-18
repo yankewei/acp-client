@@ -7,24 +7,17 @@ A minimal PHP client for the [Agent Client Protocol (ACP)](https://agentclientpr
 - JSON-RPC 2.0 request/response over stdio
 - Transport interface for custom transports
 - Synchronous, blocking API
-- Supports any JSON-RPC result type from `Client::call()`
+- Supports any JSON-RPC result type from `Client::rpc()->call()`
 - Skips server-initiated JSON-RPC notifications while waiting for a response
 - Typed `session/update` support for tool calls, plans, config options, and slash commands
 - Built-in timeout handling
 - Stdio process error messages include captured stderr when available
 - PHPUnit tests
 
-## Installation
-
-```bash
-composer require yankewei/acp-client
-```
-
 ## Usage
 
 ```php
 use Yankewei\AcpClient\Client;
-use Yankewei\AcpClient\Transport\StreamableHttpTransport;
 use Yankewei\AcpClient\Transport\StdioTransport;
 
 $transport = new StdioTransport([
@@ -34,17 +27,24 @@ $transport = new StdioTransport([
 
 $client = new Client($transport);
 
-$client->initialize();
-$session = $client->sessionNew(getcwd());
-$turn = $client->sessionPrompt($session->getSessionId(), 'Refactor the login flow');
-$client->sessionCancel($session->getSessionId());
+$client->acp()->initialize();
+$session = $client->acp()->sessionNew(getcwd());
+$turn = $client->acp()->sessionPrompt($session->getSessionId(), 'Refactor the login flow');
+$client->acp()->sessionCancel($session->getSessionId());
 $transport->close();
 ```
 
-`initialize()` sends ACP v1-compatible default client information and
+`Client` is a thin facade. The entry points are:
+
+- `$client->acp()` — typed ACP lifecycle methods
+- `$client->rpc()` — low-level JSON-RPC `call()` / `notify()`
+- `$client->notifications()` — server-initiated notification listeners
+- `$client->requests()` — agent-to-client request handlers
+
+`$client->acp()->initialize()` sends ACP v1-compatible default client information and
 capabilities. Pass an array to override any initialization params.
 
-Typed convenience methods are available for stable ACP v1 calls:
+Typed convenience methods are available on `$client->acp()` for stable ACP v1 calls:
 
 - `authenticate($methodId)` and `logout()`
 - `sessionNew($cwd, $mcpServers = [], $additionalDirectories = [])`
@@ -79,19 +79,19 @@ Use helpers such as `isEndTurn()` and `isCancelled()` for common branches.
 
 ACP agents advertise authentication methods during initialization. Use
 `InitializeResult::getAuthMethods()` to choose a method, then call
-`authenticate()` with its ID. Only call `logout()` when the agent advertised the
+`$client->acp()->authenticate()` with its ID. Only call `$client->acp()->logout()` when the agent advertised the
 logout capability:
 
 ```php
-$initialize = $client->initialize();
+$initialize = $client->acp()->initialize();
 
 $authMethod = $initialize->getAuthMethods()[0] ?? null;
 if ($authMethod !== null) {
-    $client->authenticate($authMethod->getId());
+    $client->acp()->authenticate($authMethod->getId());
 }
 
 if ($initialize->supportsLogout()) {
-    $client->logout();
+    $client->acp()->logout();
 }
 ```
 
@@ -107,10 +107,10 @@ validated locally:
 ```php
 $client = new Client($transport);
 
-$initialize = $client->initialize();
+$initialize = $client->acp()->initialize();
 
 if ($initialize->supportsSessionResume()) {
-    $client->sessionResume($sessionId, getcwd());
+    $client->acp()->sessionResume($sessionId, getcwd());
 }
 ```
 
@@ -141,7 +141,7 @@ $client = new Client($transport, strictProtocol: false);
 ## Extensibility
 
 ACP extension data belongs in `_meta`, not in ad-hoc root fields. Raw JSON-RPC
-calls can include `_meta` in params directly, and `sessionPrompt()` accepts a
+calls can include `_meta` in params directly, and `$client->acp()->sessionPrompt()` accepts a
 root `_meta` array for common tracing/correlation data:
 
 ```php
@@ -164,7 +164,7 @@ $client->rpc()->notifyExtension('_zed.dev/file_opened', [
 ```
 
 Server-initiated extension requests can be handled with
-`onRequest('_vendor/feature', ...)` or `onAnyRequest(...)`. Unknown requests
+`$client->requests()->onRequest('_vendor/feature', ...)` or `$client->requests()->onAnyRequest(...)`. Unknown requests
 receive JSON-RPC method-not-found; unknown notifications are ignored unless a
 listener is registered.
 
@@ -184,12 +184,12 @@ prompt, and then closes the transport.
 
 ACP agents can push server-initiated JSON-RPC notifications while a request is
 in flight (for example, `session/update` with prompt progress, tool calls, or
-usage updates). Register listeners to receive them:
+usage updates). Register listeners via `$client->notifications()` to receive them:
 
 ```php
 use Yankewei\AcpClient\Event\Notification;
 
-$client->onNotification(function (Notification $notification): void {
+$client->notifications()->onNotification(function (Notification $notification): void {
     if ($notification->is('session/update')) {
         $params = $notification->getParams();
         // handle progress, tool calls, usage, etc.
@@ -197,7 +197,7 @@ $client->onNotification(function (Notification $notification): void {
 });
 
 // Or listen to a specific method only:
-$client->on('session/update', function (Notification $notification): void {
+$client->notifications()->on('session/update', function (Notification $notification): void {
     // ...
 });
 ```
@@ -213,7 +213,7 @@ use Yankewei\AcpClient\Event\Update\AvailableCommandsUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallUpdate;
 use Yankewei\AcpClient\Event\Update\ToolCallStatusUpdate;
 
-$client->on('session/update', function (Notification $notification): void {
+$client->notifications()->on('session/update', function (Notification $notification): void {
     $update = SessionUpdateMapper::fromNotification($notification);
 
     match (true) {
@@ -230,7 +230,7 @@ Unknown `sessionUpdate` variants return `null` so newer agent features do not
 break existing clients.
 
 Listeners run synchronously on the same thread when a notification arrives, so
-they keep the existing blocking API simple. Use `offNotification()` or `off()`
+they keep the existing blocking API simple. Use `$client->notifications()->offNotification()` or `$client->notifications()->off()`
 to remove a listener when you no longer need it.
 
 ## Handling agent requests
@@ -238,14 +238,14 @@ to remove a listener when you no longer need it.
 ACP agents can also send JSON-RPC requests *to* the client, for example to read
 a file, run a terminal command, ask the user a question, or ask for permission.
 Unlike notifications, these messages have an `id` and require the client to send
-a JSON-RPC response. Register handlers to respond to them:
+a JSON-RPC response. Register handlers via `$client->requests()` to respond to them:
 
 ```php
-$client->onRequest('fs/read_text_file', function (array $params): string {
+$client->requests()->onRequest('fs/read_text_file', function (array $params): string {
     return file_get_contents($params['path']);
 });
 
-$client->onRequest('terminal/run', function (array $params): array {
+$client->requests()->onRequest('terminal/run', function (array $params): array {
     // run command, return { output, exitCode }
     return ['output' => '', 'exitCode' => 0];
 });
@@ -254,14 +254,14 @@ $client->onRequest('terminal/run', function (array $params): array {
 The handler return value is sent back as the JSON-RPC `result`. If a handler
 throws, the client replies with a JSON-RPC internal error (`-32603`). If no
 handler is registered for a method, it replies with method not found
-(`-32601`). Use `offRequest()` to remove a handler.
+(`-32601`). Use `$client->requests()->offRequest()` to remove a handler.
 
 Some agents use implementation-specific method names for ask-user or permission
-requests. Use `onAnyRequest()` as a fallback when you want to inspect or handle
+requests. Use `$client->requests()->onAnyRequest()` as a fallback when you want to inspect or handle
 unknown agent requests:
 
 ```php
-$client->onAnyRequest(function (string $method, array $params): mixed {
+$client->requests()->onAnyRequest(function (string $method, array $params): mixed {
     echo "\nAgent request: {$method}\n";
     echo json_encode($params, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 
@@ -274,8 +274,8 @@ $client->onAnyRequest(function (string $method, array $params): mixed {
 });
 ```
 
-Method-specific handlers registered with `onRequest()` take precedence over the
-fallback handler. Use `offAnyRequest()` to remove a fallback handler.
+Method-specific handlers registered with `$client->requests()->onRequest()` take precedence over the
+fallback handler. Use `$client->requests()->offAnyRequest()` to remove a fallback handler.
 
 For the standard ACP `session/request_permission` method, use the typed helper:
 
@@ -283,7 +283,7 @@ For the standard ACP `session/request_permission` method, use the typed helper:
 use Yankewei\AcpClient\Dto\RequestPermission;
 use Yankewei\AcpClient\Dto\RequestPermissionOutcome;
 
-$client->onRequestPermission(function (RequestPermission $request): RequestPermissionOutcome {
+$client->requests()->onRequestPermission(function (RequestPermission $request): RequestPermissionOutcome {
     foreach ($request->getOptions() as $option) {
         if ($option->getKind() === 'allow_once') {
             return RequestPermissionOutcome::selected($option->getOptionId());
@@ -294,7 +294,7 @@ $client->onRequestPermission(function (RequestPermission $request): RequestPermi
 });
 ```
 
-If `sessionCancel($sessionId)` is called while a `session/request_permission`
+If `$client->acp()->sessionCancel($sessionId)` is called while a `session/request_permission`
 handler is still pending for the same session, the client sends the ACP-required
 `cancelled` permission outcome and suppresses any later handler result.
 
@@ -338,10 +338,10 @@ ACP's JSON-RPC message format and request/response lifecycle.
 
 ```bash
 composer update
-vendor/bin/phpunit
-vendor/bin/mago analyze
-vendor/bin/mago lint
-vendor/bin/mago format
+composer test
+composer analyze
+composer lint
+composer format
 ```
 
 ## License
