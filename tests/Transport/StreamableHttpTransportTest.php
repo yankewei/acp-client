@@ -93,6 +93,27 @@ final class StreamableHttpTransportTest extends TestCase
         static::assertNull($transport->receive());
     }
 
+    public function testReceiveReturnsNullImmediatelyWhenQueueDrainedRegardlessOfTimeout(): void
+    {
+        $http = new FakeStreamableHttpClient(
+            new StreamableHttpResponse(200, ['Content-Type' => 'application/json'], json_encode([
+                'jsonrpc' => '2.0',
+                'id' => 1,
+                'result' => ['ok' => true],
+            ], JSON_THROW_ON_ERROR)),
+        );
+
+        $transport = new StreamableHttpTransport(['url' => 'https://agent.example/acp'], $http);
+        $transport->open();
+        $transport->send('{"jsonrpc":"2.0","id":1,"method":"initialize"}');
+
+        static::assertNotNull($transport->receive());
+
+        $start = microtime(true);
+        static::assertNull($transport->receive(5.0));
+        static::assertLessThan(0.5, microtime(true) - $start);
+    }
+
     public function testThrowsOnHttpErrorResponse(): void
     {
         $http = new FakeStreamableHttpClient(new StreamableHttpResponse(500, [], 'server failed'));

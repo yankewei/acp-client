@@ -22,8 +22,16 @@ use Yankewei\AcpClient\Dto\Terminal\TerminalWaitForExitResult;
 
 final class AgentRequestDispatcher
 {
-    /** @var array<string, array<int, callable(array<string, mixed>): mixed>> */
-    private array $requestHandlers = [];
+    /**
+     * Generic per-method handlers. A JSON-RPC request needs exactly one
+     * response, so each method keeps a single handler; registering again
+     * overwrites the previous one. This mirrors the typed and permission
+     * handler slots and avoids the previous "append but only invoke the
+     * first" silent drop.
+     *
+     * @var array<string, callable(array<string, mixed>): mixed>
+     */
+    private array $genericHandlers = [];
 
     /** @var (callable(string, array<string, mixed>): mixed)|null */
     private mixed $anyRequestHandler = null;
@@ -31,29 +39,62 @@ final class AgentRequestDispatcher
     /** @var (callable(RequestPermission): (RequestPermissionOutcome|array<string, mixed>))|null */
     private mixed $requestPermissionHandler = null;
 
-    /** @var (callable(ReadTextFileRequest): (ReadTextFileResult|string|array<string, mixed>))|null */
-    private mixed $readTextFileHandler = null;
+    /** @var array<string, TypedRequestSpec> */
+    private array $typedSpecs;
 
-    /** @var (callable(WriteTextFileRequest): (WriteTextFileResult|array<string, mixed>|null))|null */
-    private mixed $writeTextFileHandler = null;
-
-    /** @var (callable(TerminalCreateRequest): (TerminalCreateResult|array<string, mixed>))|null */
-    private mixed $terminalCreateHandler = null;
-
-    /** @var (callable(TerminalOutputRequest): (TerminalOutputResult|array<string, mixed>))|null */
-    private mixed $terminalOutputHandler = null;
-
-    /** @var (callable(TerminalWaitForExitRequest): (TerminalWaitForExitResult|array<string, mixed>))|null */
-    private mixed $terminalWaitForExitHandler = null;
-
-    /** @var (callable(TerminalKillRequest): (array<string, mixed>|null))|null */
-    private mixed $terminalKillHandler = null;
-
-    /** @var (callable(TerminalReleaseRequest): (array<string, mixed>|null))|null */
-    private mixed $terminalReleaseHandler = null;
+    /** @var array<string, callable> */
+    private array $typedHandlers = [];
 
     /** @var array<string, array{id: int|string, sessionId: string, sendResponse: callable(int|string, mixed): void}> */
     private array $pendingPermissionRequests = [];
+
+    public function __construct()
+    {
+        $this->typedSpecs = [
+            'fs/read_text_file' => new TypedRequestSpec(
+                ReadTextFileRequest::fromArray(...),
+                $this->normalizeReadTextFileResult(...),
+                'fs',
+                'readTextFile',
+            ),
+            'fs/write_text_file' => new TypedRequestSpec(
+                WriteTextFileRequest::fromArray(...),
+                $this->normalizeWriteTextFileResult(...),
+                'fs',
+                'writeTextFile',
+            ),
+            'terminal/create' => new TypedRequestSpec(
+                TerminalCreateRequest::fromArray(...),
+                $this->normalizeTerminalCreateResult(...),
+                'terminal',
+                null,
+            ),
+            'terminal/output' => new TypedRequestSpec(
+                TerminalOutputRequest::fromArray(...),
+                $this->normalizeTerminalOutputResult(...),
+                'terminal',
+                null,
+            ),
+            'terminal/wait_for_exit' => new TypedRequestSpec(
+                TerminalWaitForExitRequest::fromArray(...),
+                $this->normalizeTerminalWaitForExitResult(...),
+                'terminal',
+                null,
+            ),
+            'terminal/kill' => new TypedRequestSpec(
+                TerminalKillRequest::fromArray(...),
+                $this->normalizeTerminalVoidResult(...),
+                'terminal',
+                null,
+            ),
+            'terminal/release' => new TypedRequestSpec(
+                TerminalReleaseRequest::fromArray(...),
+                $this->normalizeTerminalVoidResult(...),
+                'terminal',
+                null,
+            ),
+        ];
+    }
 
     /**
      * @return array{
@@ -65,24 +106,32 @@ final class AgentRequestDispatcher
     {
         return [
             'fs' => [
-                'readTextFile' => $this->readTextFileHandler !== null,
-                'writeTextFile' => $this->writeTextFileHandler !== null,
+                'readTextFile' => $this->hasHandlerFor('fs/read_text_file'),
+                'writeTextFile' => $this->hasHandlerFor('fs/write_text_file'),
             ],
             'terminal' =>
-                $this->terminalCreateHandler !== null
-                    || $this->terminalOutputHandler !== null
-                    || $this->terminalWaitForExitHandler !== null
-                    || $this->terminalKillHandler !== null
-                    || $this->terminalReleaseHandler !== null,
+                $this->hasHandlerFor('terminal/create')
+                    || $this->hasHandlerFor('terminal/output')
+                    || $this->hasHandlerFor('terminal/wait_for_exit')
+                    || $this->hasHandlerFor('terminal/kill')
+                    || $this->hasHandlerFor('terminal/release'),
         ];
     }
 
     /**
+     * Register a handler for a method-specific agent request.
+     *
+     * A JSON-RPC request yields exactly one response, so only one handler per
+     * method is kept; a later registration for the same method overwrites the
+     * previous one. For the standard fs/terminal methods, registering via
+     * onRequest() also advertises the matching client capability in
+     * initialize(), so the agent will route those requests to this handler.
+     *
      * @param callable(array<string, mixed>): mixed $handler
      */
     public function onRequest(string $method, callable $handler): void
     {
-        $this->requestHandlers[$method][] = $handler;
+        $this->genericHandlers[$method] = $handler;
     }
 
     /**
@@ -90,14 +139,9 @@ final class AgentRequestDispatcher
      */
     public function offRequest(string $method, callable $handler): void
     {
-        if (!array_key_exists($method, $this->requestHandlers)) {
-            return;
+        if (($this->genericHandlers[$method] ?? null) === $handler) {
+            unset($this->genericHandlers[$method]);
         }
-
-        $this->requestHandlers[$method] = array_values(array_filter(
-            $this->requestHandlers[$method],
-            static fn(callable $existing): bool => $existing !== $handler,
-        ));
     }
 
     /**
@@ -141,7 +185,7 @@ final class AgentRequestDispatcher
      */
     public function onReadTextFile(callable $handler): void
     {
-        $this->readTextFileHandler = $handler;
+        $this->typedHandlers['fs/read_text_file'] = $handler;
     }
 
     /**
@@ -149,9 +193,7 @@ final class AgentRequestDispatcher
      */
     public function offReadTextFile(callable $handler): void
     {
-        if ($this->readTextFileHandler === $handler) {
-            $this->readTextFileHandler = null;
-        }
+        $this->offTypedHandler('fs/read_text_file', $handler);
     }
 
     /**
@@ -159,7 +201,7 @@ final class AgentRequestDispatcher
      */
     public function onWriteTextFile(callable $handler): void
     {
-        $this->writeTextFileHandler = $handler;
+        $this->typedHandlers['fs/write_text_file'] = $handler;
     }
 
     /**
@@ -167,9 +209,7 @@ final class AgentRequestDispatcher
      */
     public function offWriteTextFile(callable $handler): void
     {
-        if ($this->writeTextFileHandler === $handler) {
-            $this->writeTextFileHandler = null;
-        }
+        $this->offTypedHandler('fs/write_text_file', $handler);
     }
 
     /**
@@ -177,7 +217,7 @@ final class AgentRequestDispatcher
      */
     public function onTerminalCreate(callable $handler): void
     {
-        $this->terminalCreateHandler = $handler;
+        $this->typedHandlers['terminal/create'] = $handler;
     }
 
     /**
@@ -185,9 +225,7 @@ final class AgentRequestDispatcher
      */
     public function offTerminalCreate(callable $handler): void
     {
-        if ($this->terminalCreateHandler === $handler) {
-            $this->terminalCreateHandler = null;
-        }
+        $this->offTypedHandler('terminal/create', $handler);
     }
 
     /**
@@ -195,7 +233,7 @@ final class AgentRequestDispatcher
      */
     public function onTerminalOutput(callable $handler): void
     {
-        $this->terminalOutputHandler = $handler;
+        $this->typedHandlers['terminal/output'] = $handler;
     }
 
     /**
@@ -203,9 +241,7 @@ final class AgentRequestDispatcher
      */
     public function offTerminalOutput(callable $handler): void
     {
-        if ($this->terminalOutputHandler === $handler) {
-            $this->terminalOutputHandler = null;
-        }
+        $this->offTypedHandler('terminal/output', $handler);
     }
 
     /**
@@ -213,7 +249,7 @@ final class AgentRequestDispatcher
      */
     public function onTerminalWaitForExit(callable $handler): void
     {
-        $this->terminalWaitForExitHandler = $handler;
+        $this->typedHandlers['terminal/wait_for_exit'] = $handler;
     }
 
     /**
@@ -221,9 +257,7 @@ final class AgentRequestDispatcher
      */
     public function offTerminalWaitForExit(callable $handler): void
     {
-        if ($this->terminalWaitForExitHandler === $handler) {
-            $this->terminalWaitForExitHandler = null;
-        }
+        $this->offTypedHandler('terminal/wait_for_exit', $handler);
     }
 
     /**
@@ -231,7 +265,7 @@ final class AgentRequestDispatcher
      */
     public function onTerminalKill(callable $handler): void
     {
-        $this->terminalKillHandler = $handler;
+        $this->typedHandlers['terminal/kill'] = $handler;
     }
 
     /**
@@ -239,9 +273,7 @@ final class AgentRequestDispatcher
      */
     public function offTerminalKill(callable $handler): void
     {
-        if ($this->terminalKillHandler === $handler) {
-            $this->terminalKillHandler = null;
-        }
+        $this->offTypedHandler('terminal/kill', $handler);
     }
 
     /**
@@ -249,7 +281,7 @@ final class AgentRequestDispatcher
      */
     public function onTerminalRelease(callable $handler): void
     {
-        $this->terminalReleaseHandler = $handler;
+        $this->typedHandlers['terminal/release'] = $handler;
     }
 
     /**
@@ -257,9 +289,7 @@ final class AgentRequestDispatcher
      */
     public function offTerminalRelease(callable $handler): void
     {
-        if ($this->terminalReleaseHandler === $handler) {
-            $this->terminalReleaseHandler = null;
-        }
+        $this->offTypedHandler('terminal/release', $handler);
     }
 
     /**
@@ -281,14 +311,20 @@ final class AgentRequestDispatcher
             return;
         }
 
-        if ($this->dispatchTypedRequest($method, $id, $data, $sendResponse, $sendError)) {
+        if ($method === 'session/request_permission' && $this->requestPermissionHandler !== null) {
+            $this->handleRequestPermission($id, $data, $sendResponse, $sendError);
             return;
         }
 
-        $methodHandler = $this->requestHandlers[$method][0] ?? null;
+        if (array_key_exists($method, $this->typedSpecs) && array_key_exists($method, $this->typedHandlers)) {
+            $this->executeTypedRequest($method, $id, $data, $sendResponse, $sendError);
+            return;
+        }
+
+        $genericHandler = $this->genericHandlers[$method] ?? null;
         $anyHandler = $this->anyRequestHandler;
 
-        if ($methodHandler === null && $anyHandler === null) {
+        if ($genericHandler === null && $anyHandler === null) {
             $sendError($id, -32_601, "Method not found: {$method}");
             return;
         }
@@ -296,7 +332,7 @@ final class AgentRequestDispatcher
         $params = $this->objectParams($data);
 
         try {
-            $result = $methodHandler !== null ? $methodHandler($params) : $anyHandler($method, $params);
+            $result = $genericHandler !== null ? $genericHandler($params) : $anyHandler($method, $params);
             $sendResponse($id, $result);
         } catch (Throwable $e) {
             $sendError($id, -32_603, $e->getMessage());
@@ -308,153 +344,25 @@ final class AgentRequestDispatcher
      * @param callable(int|string, mixed): void $sendResponse
      * @param callable(int|string, int, string, mixed=): void $sendError
      */
-    private function dispatchTypedRequest(
-        string $method,
-        int|string $id,
-        array $data,
-        callable $sendResponse,
-        callable $sendError,
-    ): bool {
-        if ($method === 'session/request_permission' && $this->requestPermissionHandler !== null) {
-            $this->handleRequestPermission($id, $data, $sendResponse, $sendError);
-            return true;
-        }
-
-        if ($method === 'fs/read_text_file' && $this->readTextFileHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'fs/read_text_file',
-                ReadTextFileRequest::fromArray(...),
-                $this->readTextFileHandler,
-                $this->normalizeReadTextFileResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'fs/write_text_file' && $this->writeTextFileHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'fs/write_text_file',
-                WriteTextFileRequest::fromArray(...),
-                $this->writeTextFileHandler,
-                $this->normalizeWriteTextFileResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'terminal/create' && $this->terminalCreateHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'terminal/create',
-                TerminalCreateRequest::fromArray(...),
-                $this->terminalCreateHandler,
-                $this->normalizeTerminalCreateResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'terminal/output' && $this->terminalOutputHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'terminal/output',
-                TerminalOutputRequest::fromArray(...),
-                $this->terminalOutputHandler,
-                $this->normalizeTerminalOutputResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'terminal/wait_for_exit' && $this->terminalWaitForExitHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'terminal/wait_for_exit',
-                TerminalWaitForExitRequest::fromArray(...),
-                $this->terminalWaitForExitHandler,
-                $this->normalizeTerminalWaitForExitResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'terminal/kill' && $this->terminalKillHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'terminal/kill',
-                TerminalKillRequest::fromArray(...),
-                $this->terminalKillHandler,
-                $this->normalizeTerminalVoidResult(...),
-            );
-            return true;
-        }
-
-        if ($method === 'terminal/release' && $this->terminalReleaseHandler !== null) {
-            $this->executeTypedRequest(
-                $id,
-                $data,
-                $sendResponse,
-                $sendError,
-                'terminal/release',
-                TerminalReleaseRequest::fromArray(...),
-                $this->terminalReleaseHandler,
-                $this->normalizeTerminalVoidResult(...),
-            );
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @template TRequest of object
-     * @template TResult
-     * @param array<string, mixed> $data
-     * @param callable(int|string, mixed): void $sendResponse
-     * @param callable(int|string, int, string, mixed=): void $sendError
-     * @param callable(array<string, mixed>): TRequest $parse
-     * @param (callable(TRequest): TResult)|null $handler
-     * @param callable(TResult): mixed $normalize
-     */
     private function executeTypedRequest(
+        string $method,
         int|string $id,
         array $data,
         callable $sendResponse,
         callable $sendError,
-        string $method,
-        callable $parse,
-        ?callable $handler,
-        callable $normalize,
     ): void {
+        $spec = $this->typedSpecs[$method];
+        $handler = $this->typedHandlers[$method];
+
         try {
-            $request = $parse($this->objectParams($data));
+            $request = ($spec->parse)($this->objectParams($data));
         } catch (Throwable $e) {
             $sendError($id, -32_602, $e->getMessage());
             return;
         }
 
         try {
-            if ($handler === null) {
-                $sendError($id, -32_601, "Method not found: {$method}");
-                return;
-            }
-
-            $sendResponse($id, $normalize($handler($request)));
+            $sendResponse($id, ($spec->normalize)($handler($request)));
         } catch (Throwable $e) {
             $sendError($id, -32_603, $e->getMessage());
         }
@@ -610,6 +518,21 @@ final class AgentRequestDispatcher
 
             $request['sendResponse']($request['id'], RequestPermissionOutcome::cancelled()->toResultArray());
             unset($this->pendingPermissionRequests[$key]);
+        }
+    }
+
+    private function hasHandlerFor(string $method): bool
+    {
+        return array_key_exists($method, $this->typedHandlers) || array_key_exists($method, $this->genericHandlers);
+    }
+
+    /**
+     * @param callable $handler typed handler for the method
+     */
+    private function offTypedHandler(string $method, callable $handler): void
+    {
+        if (($this->typedHandlers[$method] ?? null) === $handler) {
+            unset($this->typedHandlers[$method]);
         }
     }
 

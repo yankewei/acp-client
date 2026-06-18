@@ -6,6 +6,28 @@ namespace Yankewei\AcpClient\Transport;
 
 use Yankewei\AcpClient\Exception\TransportException;
 
+/**
+ * Synchronous batch transport for the draft ACP Streamable HTTP mapping.
+ *
+ * Each {@see send()} performs a single blocking HTTP POST and queues every
+ * JSON-RPC message found in that response body (plain JSON or SSE `data:`
+ * events). {@see receive()} drains that queue without blocking: because
+ * messages can only arrive as part of a POST response, there is no async
+ * producer between calls, so an empty queue means the expected response was
+ * not present in the HTTP body and {@see receive()} returns null immediately
+ * regardless of $timeout. JsonRpcPeer then reports "Timeout waiting for
+ * response", which for this transport signals a missing-in-body condition
+ * rather than an elapsed wait.
+ *
+ * Consequences of the synchronous batch model:
+ * - Server-initiated notifications that arrive outside a call's POST response
+ *   are not delivered (there is no long-lived streaming connection).
+ * - A request whose response is not packed into the same HTTP body fails
+ *   immediately instead of waiting out $timeout.
+ *
+ * Deployment-specific auth, retries, and long-lived streaming semantics are
+ * intentionally left to custom TransportInterface implementations.
+ */
 final class StreamableHttpTransport implements TransportInterface
 {
     private bool $open = false;
@@ -52,6 +74,12 @@ final class StreamableHttpTransport implements TransportInterface
         $this->queueResponseMessages($response->getBody(), $response->getContentType());
     }
 
+    /**
+     * Returns the next queued message from the last {@see send()} POST body,
+     * or null when the queue is drained. $timeout is not consulted because this
+     * transport has no async producer between calls: an empty queue means the
+     * expected response was not in the HTTP body, so waiting cannot produce it.
+     */
     public function receive(float $timeout = 0.0): ?string
     {
         return array_shift($this->receivedMessages);

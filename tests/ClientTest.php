@@ -316,13 +316,83 @@ final class ClientTest extends TestCase
         static::assertFalse($clientCapabilities['terminal']);
     }
 
+    public function testInitializeAdvertisesFsCapabilityWhenGenericHandlerRegisteredForKnownMethod(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->requests()->onRequest('fs/read_text_file', static fn(array $_params): string => 'contents');
+        $client->acp()->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+        $fs = self::getArray($clientCapabilities, 'fs');
+
+        static::assertTrue($fs['readTextFile']);
+        static::assertFalse($fs['writeTextFile']);
+    }
+
+    public function testInitializeAdvertisesTerminalCapabilityWhenGenericHandlerRegisteredForKnownMethod(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => [
+                'protocolVersion' => 1,
+                'agentCapabilities' => [],
+            ],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->requests()->onRequest('terminal/kill', static fn(array $_params): array => []);
+        $client->acp()->initialize();
+
+        $sent = self::decode($transport->sent[0]);
+        $clientCapabilities = self::getArray(self::paramsOf($sent), 'clientCapabilities');
+
+        static::assertTrue($clientCapabilities['terminal']);
+    }
+
+    public function testGenericRequestHandlerOverwritesPreviousHandlerForSameMethod(): void
+    {
+        $transport = new FakeTransport();
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 'req-1',
+            'method' => 'custom/method',
+            'params' => [],
+        ]);
+        $transport->responses[] = self::encode([
+            'jsonrpc' => '2.0',
+            'id' => 1,
+            'result' => ['ok' => true],
+        ]);
+
+        $client = new Client($transport, 1.0, false);
+        $client->requests()->onRequest('custom/method', static fn(array $_params): array => ['answer' => 'first']);
+        $client->requests()->onRequest('custom/method', static fn(array $_params): array => ['answer' => 'second']);
+
+        $client->rpc()->call('initialize');
+
+        $response = self::decode($transport->sent[1]);
+        static::assertSame(['answer' => 'second'], $response['result']);
+    }
+
     public function testAuthenticateCallsAcpMethod(): void
     {
         $transport = $this->transportWithResult(['ok' => true]);
         $client = new Client($transport, 1.0, false);
 
         static::assertSame(['ok' => true], $client->acp()->authenticate('login'));
-
         $sent = $this->sentMessage($transport);
         static::assertSame('authenticate', $sent['method']);
         static::assertSame(['methodId' => 'login'], $sent['params']);

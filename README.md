@@ -325,6 +325,15 @@ documentation, this transport keeps policy small and leaves deployment-specific
 auth, retries, and long-lived streaming semantics to custom transport
 implementations.
 
+The transport is synchronous and batch-oriented: each `send()` performs one
+blocking POST and queues every JSON-RPC message found in that response body.
+`receive()` drains that queue without blocking — there is no long-lived
+streaming connection between calls, so server-initiated notifications that
+arrive outside a call's POST response are not delivered, and a request whose
+response is not packed into the same HTTP body fails immediately rather than
+waiting out the timeout. For long-lived streaming or async notifications,
+implement a custom `TransportInterface`.
+
 Custom transports can implement `TransportInterface` as long as they preserve
 ACP's JSON-RPC message format and request/response lifecycle.
 

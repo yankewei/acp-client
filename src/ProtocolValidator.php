@@ -135,7 +135,12 @@ final class ProtocolValidator
                     $index,
                     $contentBlockType->value,
                 ),
-                ContentBlockType::Resource => $this->validateEmbeddedContextContentBlock($method, $initializeResult, $block, $index),
+                ContentBlockType::Resource => $this->validateEmbeddedContextContentBlock(
+                    $method,
+                    $initializeResult,
+                    $block,
+                    $index,
+                ),
             };
         }
     }
@@ -342,12 +347,8 @@ final class ProtocolValidator
      *
      * @throws AcpException
      */
-    private function validateMediaContentBlock(
-        string $method,
-        array $block,
-        int $index,
-        string $type,
-    ): void {
+    private function validateMediaContentBlock(string $method, array $block, int $index, string $type): void
+    {
         if (!array_key_exists('data', $block) || !is_string($block['data'])) {
             throw new AcpException("Invalid {$method} params: prompt[{$index}].data must be a string");
         }

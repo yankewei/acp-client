@@ -31,28 +31,43 @@ Source code lives under `src/` in the `Yankewei\AcpClient\` PSR-4 namespace. Tes
 
 ```
 src/
-├── Client.php                      # Main JSON-RPC client and ACP method wrappers
+├── Client.php                      # Thin facade: wires transport + dispatchers + validator
+├── Acp.php                         # Typed ACP v1 lifecycle wrappers (returned by Client::acp())
+├── JsonRpcPeer.php                 # Low-level JSON-RPC call/notify + waitForResponse loop (Client::rpc())
+├── ProtocolValidator.php           # Strict-mode Session Setup + prompt/MCP validation
+├── NotificationDispatcher.php      # Server-initiated notification listener registry (Client::notifications())
+├── AgentRequestDispatcher.php      # Agent-to-client request handler registry + capability advertise (Client::requests())
+├── TypedRequestSpec.php            # Internal spec pairing a typed request parser with a result normalizer
 ├── Transport/
 │   ├── TransportInterface.php      # Abstraction for transports
-│   └── StdioTransport.php          # stdio process transport with stderr capture
+│   ├── StdioTransport.php          # stdio process transport with stderr capture (ACP v1 stable)
+│   ├── StreamableHttpTransport.php # Draft synchronous batch HTTP transport
+│   ├── StreamableHttpClientInterface.php
+│   ├── StreamableHttpResponse.php
+│   └── NativeStreamableHttpClient.php
 ├── JsonRpc/
-│   ├── Request.php                 # JSON-RPC request builder
+│   ├── Request.php                 # JSON-RPC request builder (id counter)
 │   ├── Response.php                # JSON-RPC response parser
 │   └── Error.php                   # JSON-RPC error object
 ├── Dto/                            # Typed value objects for ACP results
 │   ├── InitializeResult.php
 │   ├── Session.php
 │   ├── SessionListResult.php
+│   ├── SessionConfigOptionsResult.php
+│   ├── SessionInfo.php
 │   ├── PromptResult.php
 │   ├── RequestPermission.php
 │   ├── RequestPermissionOutcome.php
-│   ├── AuthMethod.php
-│   ├── SessionInfo.php
 │   ├── PermissionOption.php
+│   ├── AuthMethod.php
+│   ├── ConfigOption.php
+│   ├── ConfigOptionValue.php
 │   ├── ToolCallLocation.php
+│   ├── DtoHelper.php
 │   ├── ContentBlock/               # Prompt content block types and factory
 │   ├── ToolCallContent/            # Tool-call content types and factory
-│   └── FileSystem/                 # File system request/result DTOs
+│   ├── FileSystem/                 # fs/read_text_file + fs/write_text_file request/result DTOs
+│   └── Terminal/                   # terminal/* request/result DTOs (create, output, wait_for_exit, kill, release)
 ├── Event/                          # Server-initiated notification handling
 │   ├── Notification.php
 │   ├── SessionInfoUpdate.php
@@ -67,13 +82,14 @@ src/
     └── Path.php                    # Absolute-path checks
 
 tests/
-├── ClientTest.php                  # Core client behavior and strict-mode tests
+├── ClientTest.php                  # Core client behavior, capabilities, strict-mode, typed handlers
 ├── FakeTransport.php               # In-memory transport for unit tests
 ├── Fixtures/                       # Stand-in stdio agents used by tests
-├── Dto/                            # DTO parsing tests
+├── Dto/                            # DTO parsing tests (incl. FileSystem, Terminal)
 ├── Event/                          # Notification/update tests
 ├── Exception/                      # Exception tests
-└── JsonRpc/                        # JSON-RPC message tests
+├── JsonRpc/                        # JSON-RPC message tests
+└── Transport/                      # StreamableHttpTransport tests
 
 examples/
 └── kimi-smoke.php                  # Optional live smoke test against `kimi acp`
@@ -134,37 +150,44 @@ php examples/kimi-smoke.php
 
 ## Runtime Architecture
 
-- `Client` is the single entry point. It owns a `TransportInterface`, a default timeout, and a strict-protocol flag.
+- `Client` is a thin facade and the single entry point. It owns a `TransportInterface`, a default timeout, and a strict-protocol flag. It wires four collaborators and exposes them via accessors:
+  - `$client->acp()` — `Acp`: typed ACP v1 lifecycle wrappers returning DTOs.
+  - `$client->rpc()` — `JsonRpcPeer`: low-level JSON-RPC `call()` / `notify()` / extension methods.
+  - `$client->notifications()` — `NotificationDispatcher`: server-initiated notification listeners.
+  - `$client->requests()` — `AgentRequestDispatcher`: agent-to-client request handlers and client-capability advertising.
 - Transports are opened lazily on the first `call()` or `notify()`.
-- `Client::call()` sends a JSON-RPC request, then blocks in `waitForResponse()` until the matching response arrives or the timeout expires.
+- `JsonRpcPeer::call()` sends a JSON-RPC request, then blocks in `waitForResponse()` until the matching response arrives or the timeout expires.
 - While waiting, incoming server-initiated notifications are dispatched to registered listeners; incoming agent-to-client requests are handled synchronously.
-- `Client::notify()` sends a JSON-RPC notification without waiting for a response.
+- `JsonRpcPeer::notify()` sends a JSON-RPC notification without waiting for a response.
+- `JsonRpcPeer::callExtension()` / `notifyExtension()` enforce the ACP rule that custom method names start with `_`.
 
 ### ACP convenience methods
 
-High-level wrappers return typed DTOs:
+High-level wrappers on `$client->acp()` return typed DTOs:
 
 - `initialize(array $params = []): InitializeResult`
-- `authenticate(string $methodId): array`
-- `logout(): array`
-- `sessionNew(string $cwd, ...): Session`
-- `sessionLoad(string $sessionId, string $cwd, ...): mixed`
-- `sessionResume(string $sessionId, string $cwd, ...): Session`
-- `sessionClose(string $sessionId): Session`
-- `sessionList(?string $cwd, ?string $cursor): SessionListResult`
-- `sessionDelete(string $sessionId): array`
-- `sessionPrompt(string $sessionId, string|array $prompt): PromptResult`
+- `authenticate(string $methodId, ?float $timeout = null): array`
+- `logout(?float $timeout = null): array`
+- `sessionNew(string $cwd, array $mcpServers = [], array $additionalDirectories = [], ?float $timeout = null): Session`
+- `sessionLoad(string $sessionId, string $cwd, array $mcpServers = [], array $additionalDirectories = [], ?float $timeout = null): mixed`
+- `sessionResume(string $sessionId, string $cwd, array $mcpServers = [], array $additionalDirectories = [], ?float $timeout = null): Session`
+- `sessionClose(string $sessionId, ?float $timeout = null): Session`
+- `sessionList(?string $cwd = null, ?string $cursor = null, ?float $timeout = null): SessionListResult`
+- `sessionDelete(string $sessionId, ?float $timeout = null): array`
+- `sessionPrompt(string $sessionId, string|array $prompt, ?float $timeout = null, array $meta = []): PromptResult`
+- `sessionSlashCommand(string $sessionId, string $command, ?string $input = null, ?float $timeout = null, array $meta = []): PromptResult`
 - `sessionCancel(string $sessionId): void`
-- `setConfigOption(string $sessionId, string $configId, string $value): array`
-- `setMode(string $sessionId, string $modeId): mixed`
+- `setConfigOption(string $sessionId, string $configId, string $value, ?float $timeout = null): SessionConfigOptionsResult`
+- `setMode(string $sessionId, string $modeId, ?float $timeout = null): SessionConfigOptionsResult`
 
-The lower-level `Client::call()` and `Client::notify()` methods remain available for agent-specific extensions.
+The lower-level `$client->rpc()->call()` and `$client->rpc()->notify()` methods remain available for agent-specific extensions and ACP methods not yet wrapped, and still return raw arrays/mixed values as the escape hatch.
 
 ### Notifications and agent requests
 
-- Register notification listeners with `onNotification()` or `on('session/update', ...)`.
+- Register notification listeners with `$client->notifications()->onNotification()` or `on('session/update', ...)`.
 - Use typed mappers such as `SessionUpdateMapper::fromNotification()` to dispatch `session/update` variants to concrete value objects.
-- Register handlers for agent-to-client requests with `onRequest()`, a fallback with `onAnyRequest()`, or a typed permission handler with `onRequestPermission()`.
+- Register handlers for agent-to-client requests with `$client->requests()->onRequest()`, a fallback with `onAnyRequest()`, a typed permission handler with `onRequestPermission()`, or typed fs/terminal handlers (`onReadTextFile`, `onWriteTextFile`, `onTerminalCreate`, `onTerminalOutput`, `onTerminalWaitForExit`, `onTerminalKill`, `onTerminalRelease`).
+- `AgentRequestDispatcher` keeps a single handler per method (a later `onRequest()` for the same method overwrites the previous one). Method-specific handlers take precedence over `onAnyRequest()`, and typed fs/terminal handlers take precedence over a generic `onRequest()` handler for the same method. `clientCapabilities()` advertises `fs` and `terminal` from any registered handler for the matching method, whether registered via the typed helpers or `onRequest()`.
 
 ### Protocol strictness
 
